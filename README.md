@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VitrOS
 
-## Getting Started
+Multi-tenant SaaS platform for tissue-culture laboratory operations. Built for plant-propagation and tissue-culture labs that track tens of thousands of vessels through subculture cycles and need to keep genealogy, contamination history, and batch context intact, instead of managing it on spreadsheets and paper.
 
-First, run the development server:
+> Developed under Endless BioTech.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## What it does
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Vessel tracking** — every vessel followed through its lifecycle, with barcode scanning for fast intake and movement
+- **Contamination tracing** — flag contamination events and trace them across related vessels and batches
+- **Genealogy chains** — full parent-to-clone lineage for every cultivar
+- **Batch management** — group, move, and operate on vessels in batches
+- **Role-based access control** — scoped permissions per lab
+- **Multi-tenancy** — isolated per-lab environments with automated provisioning
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **App:** Next.js, React, TypeScript
+- **Database:** PostgreSQL (Neon)
+- **Access:** role-based access control, per-tenant isolation
+- **Deploy:** Vercel
 
-## Learn More
+## Status
 
-To learn more about Next.js, take a look at the following resources:
+Built from an empty repo to a working multi-tenant platform and demoed directly with laboratory directors. Active development.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Author
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+York Sims — [github.com/theblockchainbaby](https://github.com/theblockchainbaby) · [yorksims.com](https://yorksims.com)
