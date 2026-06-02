@@ -7,6 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Cold-outreach unsubscribe / suppression list. Checked before any Resend
+// send. Receives writes from /api/unsubscribe and from Resend bounce/complaint
+// webhooks. Lowercased emails only.
+model EmailSuppression {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  reason     String   @default("user_unsubscribed")
+  campaignId String?
+  createdAt  DateTime @default(now())
+
+  @@index([email])
+}
+
 model Organization {
   id                   String              @id @default(cuid())
   name                 String

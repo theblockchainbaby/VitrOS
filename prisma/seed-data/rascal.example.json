@@ -1,0 +1,20 @@
+{
+  "_comment": "Template for a customer production seed. Copy to rascal.json (git-ignored) and fill in real values. Do not put real customer data in this .example file.",
+  "org": {
+    "keeperOrgId": "REPLACE_WITH_ORG_CUID",
+    "duplicateOrgId": "REPLACE_WITH_DUPLICATE_ORG_CUID_OR_LEAVE_AS_IS",
+    "name": "Example Lab (Pty) Ltd",
+    "slug": "example-lab"
+  },
+  "site": {
+    "name": "Example Lab HQ",
+    "address": "City, Region, Country"
+  },
+  "defaultPassword": "change-me-before-seeding",
+  "trialDays": 90,
+  "users": [
+    { "name": "First Last", "email": "owner@example.com", "role": "admin", "pin": "0000" },
+    { "name": "First Last", "email": "tech@example.com", "role": "lead_tech", "pin": "0000" }
+  ],
+  "genebankDataPath": "/absolute/path/to/genebank.json"
+}

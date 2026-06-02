@@ -126,7 +126,7 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
 
 .nav-step { font-size: 13px; color: var(--fg-faint); font-weight: 500; letter-spacing: 0.02em; }
 
-/* ─── Screen 1: Welcome ─── */
+/* ─── Screen 0: Welcome ─── */
 .welcome {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 100vh; padding: 40px 24px 100px;
@@ -208,73 +208,6 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── App Shell (Screen 4 only now) ─── */
-.app-shell {
-  display: flex; height: 100vh;
-}
-
-.sidebar {
-  width: 240px; min-width: 240px; background: var(--sidebar);
-  display: flex; flex-direction: column; padding: 20px 0;
-  color: rgba(255,255,255,0.7); overflow-y: auto;
-}
-.sidebar-logo {
-  display: flex; align-items: center; gap: 10px;
-  padding: 0 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.08);
-  margin-bottom: 16px;
-}
-.sidebar-logo .logo-mark-sm {
-  display: flex; align-items: center; justify-content: center;
-}
-.sidebar-logo .logo-mark-sm img { height: 28px; width: auto; filter: brightness(0) invert(1); }
-.sidebar-logo span { display: none; }
-
-.sidebar-section { padding: 0 12px; margin-bottom: 8px; }
-.sidebar-section-title {
-  font-size: 10px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.08em; color: rgba(255,255,255,0.35);
-  padding: 8px 8px 6px; margin-bottom: 2px;
-}
-.sidebar-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: var(--radius-sm);
-  font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.6);
-  transition: all var(--transition); cursor: default;
-}
-.sidebar-item.active {
-  background: var(--sidebar-active); color: white; font-weight: 500;
-}
-.sidebar-item svg { width: 16px; height: 16px; opacity: 0.7; flex-shrink: 0; }
-.sidebar-item.active svg { opacity: 1; }
-
-.sidebar-user {
-  margin-top: auto; padding: 16px 20px;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  display: flex; align-items: center; gap: 10px;
-}
-.sidebar-avatar {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: var(--teal-600); display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 600; color: white;
-}
-.sidebar-user-info { font-size: 12px; }
-.sidebar-user-info .name { color: white; font-weight: 500; }
-.sidebar-user-info .role { color: rgba(255,255,255,0.4); font-size: 11px; }
-
-.main-content {
-  flex: 1; overflow-y: auto; padding: 28px 32px 100px;
-  background: var(--bg-subtle);
-}
-
-.page-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 24px;
-}
-.page-header h2 {
-  font-family: var(--font-sans); font-size: 20px; font-weight: 700;
-  letter-spacing: -0.02em; color: var(--fg);
-}
-
 /* ─── Badges ─── */
 .badge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -287,63 +220,6 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
 .badge-purple { background: var(--purple-100); color: var(--purple-800); }
 .badge-teal { background: var(--teal-100); color: var(--teal-800); }
 .badge-red { background: var(--red-100); color: var(--red-800); }
-
-/* ─── Lineage Tree ─── */
-.lineage-stats {
-  display: flex; gap: 24px; margin-bottom: 24px;
-}
-.lineage-stat {
-  display: flex; align-items: center; gap: 8px;
-}
-.lineage-stat .stat-dot { width: 10px; height: 10px; border-radius: 50%; }
-.lineage-stat .stat-label { font-size: 13px; color: var(--fg-muted); }
-.lineage-stat .stat-value { font-size: 14px; font-weight: 700; color: var(--fg); }
-
-.tree-container { padding: 20px 0 20px 20px; }
-.tree-node {
-  position: relative; margin-bottom: 8px;
-}
-.tree-node-content {
-  display: inline-flex; align-items: center; gap: 10px;
-  padding: 10px 16px; border-radius: var(--radius);
-  background: white; border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
-}
-.tree-node-content:hover { box-shadow: var(--shadow-md); }
-.tree-node-content.highlight {
-  border-color: var(--teal-400);
-  box-shadow: 0 0 0 3px rgba(13,148,136,0.1), var(--shadow-md);
-}
-.tree-node-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.tree-node-id { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--fg); }
-.tree-node-cultivar { font-size: 12px; color: var(--fg-muted); }
-.tree-node-stage { font-size: 10px; }
-.tree-node-gen { font-size: 10px; color: var(--fg-faint); font-weight: 500; }
-
-.tree-children {
-  margin-left: 36px; padding-left: 20px;
-  border-left: 2px solid var(--teal-200);
-}
-.tree-child-branch {
-  position: relative; padding: 4px 0;
-}
-.tree-child-branch::before {
-  content: ''; position: absolute; left: -20px; top: 22px;
-  width: 20px; height: 2px; background: var(--teal-200);
-}
-
-/* ─── Cards (for screen 4) ─── */
-.card {
-  background: white; border-radius: var(--radius); border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-sm); overflow: hidden;
-}
-.card-header {
-  padding: 16px 20px; border-bottom: 1px solid var(--border-light);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.card-title { font-size: 14px; font-weight: 600; color: var(--fg); }
-.card-body { padding: 20px; }
 
 /* ─── Annotation Overlay ─── */
 .annotation {
@@ -361,7 +237,7 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* ─── Screen 19: CTA ─── */
+/* ─── Screen 17: CTA ─── */
 .cta-screen {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 100vh; padding: 40px 24px 100px;
@@ -430,13 +306,7 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
 .cta-contact a:hover { text-decoration: underline; }
 
 /* ─── Responsive ─── */
-@media (max-width: 900px) {
-  .sidebar { width: 200px; min-width: 200px; }
-  .main-content { padding: 20px 20px 100px; }
-}
 @media (max-width: 640px) {
-  .sidebar { display: none; }
-  .lineage-stats { flex-wrap: wrap; gap: 12px; }
   .cta-buttons { flex-direction: column; align-items: center; }
   .annotation { font-size: 12px; padding: 10px 18px; max-width: 90vw; white-space: normal; text-align: center; }
   .nav-bar { padding: 12px 16px; }
@@ -484,7 +354,7 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
 
 /* Dark bg overrides for voice control */
 .screen:nth-child(1).active ~ .voice-control .voice-btn,
-#screen-18.active ~ .voice-control .voice-btn {
+#screen-17.active ~ .voice-control .voice-btn {
   background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.15);
 }
 
@@ -521,13 +391,8 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
       <h1>See how VitrOS <em>transforms</em> your tissue culture lab</h1>
 
       <p class="welcome-sub">
-        <span>Interactive walkthrough <span class="dot"></span> 3 minutes</span>
+        <span>Tissue Culture Lab Management Software</span>
       </p>
-
-      <button class="start-btn" onclick="goTo(1)">
-        Start Demo
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </button>
     </div>
   </div>
 
@@ -542,322 +407,159 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 2: SCAN/BARCODE -->
+  <!-- SCREEN 2: SCAN -->
   <!-- ══════════════════════════════════════════ -->
   <div class="screen" id="screen-2">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_2.png" alt="Scan Vessel" class="screen-image">
+      <img src="demo-screens/screen_2.png" alt="Scan" class="screen-image">
     </div>
     <div class="annotation">&#128241; Scan any vessel in 3 seconds — 5× faster than manual entry</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 3: VESSELS -->
+  <!-- SCREEN 3: DAILY TASKS -->
   <!-- ══════════════════════════════════════════ -->
   <div class="screen" id="screen-3">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_3.png" alt="Vessels" class="screen-image">
-    </div>
-    <div class="annotation">&#129516; Track every vessel from initiation to hardening — full lifecycle visibility</div>
-  </div>
-
-  <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 4: LINEAGE TREE (hand-coded) -->
-  <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-4">
-    <div class="app-shell">
-      <nav class="sidebar">
-        <div class="sidebar-logo"><div class="logo-mark-sm"><img src="logo.png" alt="VitrOS"></div><span>VitrOS</span></div>
-        <div class="sidebar-section">
-          <div class="sidebar-section-title">Overview</div>
-          <div class="sidebar-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Dashboard</div>
-          <div class="sidebar-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg> Scan</div>
-        </div>
-        <div class="sidebar-section">
-          <div class="sidebar-section-title">Culture Management</div>
-          <div class="sidebar-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg> Vessels</div>
-          <div class="sidebar-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 012 2v7"/><path d="M6 9v12"/></svg> Lineage</div>
-        </div>
-        <div class="sidebar-section">
-          <div class="sidebar-section-title">Intelligence</div>
-          <div class="sidebar-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg> Analytics</div>
-        </div>
-        <div class="sidebar-user"><div class="sidebar-avatar">YS</div><div class="sidebar-user-info"><div class="name">York Sims</div><div class="role">Lab Director</div></div></div>
-      </nav>
-      <div class="main-content">
-        <div class="page-header"><h2>Lineage Tree — Phalaenopsis 'Ice Crystal'</h2></div>
-
-        <div class="lineage-stats">
-          <div class="lineage-stat">
-            <div class="stat-dot" style="background:var(--green-500);"></div>
-            <span class="stat-label">Healthy</span> <span class="stat-value">7</span>
-          </div>
-          <div class="lineage-stat">
-            <div class="stat-dot" style="background:var(--amber-500);"></div>
-            <span class="stat-label">Stable</span> <span class="stat-value">2</span>
-          </div>
-          <div class="lineage-stat">
-            <div class="stat-dot" style="background:var(--red-500);"></div>
-            <span class="stat-label">Critical</span> <span class="stat-value">1</span>
-          </div>
-          <div class="lineage-stat">
-            <div class="stat-dot" style="background:var(--gray-400);"></div>
-            <span class="stat-label">Disposed</span> <span class="stat-value">1</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-body">
-            <div class="tree-container">
-              <!-- Gen 0: Mother Plant -->
-              <div class="tree-node">
-                <div class="tree-node-content">
-                  <div class="tree-node-dot" style="background:var(--green-500);"></div>
-                  <span class="tree-node-id">VTC-00001</span>
-                  <span class="tree-node-cultivar">Mother Plant</span>
-                  <span class="badge badge-green tree-node-stage">Multiplication</span>
-                  <span class="tree-node-gen">Gen 0</span>
-                </div>
-                <!-- Gen 1 Children -->
-                <div class="tree-children">
-                  <div class="tree-child-branch">
-                    <div class="tree-node">
-                      <div class="tree-node-content">
-                        <div class="tree-node-dot" style="background:var(--green-500);"></div>
-                        <span class="tree-node-id">VTC-00102</span>
-                        <span class="tree-node-cultivar">Ice Crystal</span>
-                        <span class="badge badge-amber tree-node-stage">Rooting</span>
-                        <span class="tree-node-gen">Gen 1</span>
-                      </div>
-                      <!-- Gen 2 -->
-                      <div class="tree-children">
-                        <div class="tree-child-branch">
-                          <div class="tree-node">
-                            <div class="tree-node-content highlight">
-                              <div class="tree-node-dot" style="background:var(--green-500);"></div>
-                              <span class="tree-node-id">VTC-00412</span>
-                              <span class="tree-node-cultivar">Ice Crystal</span>
-                              <span class="badge badge-green tree-node-stage">Multiplication</span>
-                              <span class="tree-node-gen">Gen 2</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="tree-child-branch">
-                          <div class="tree-node">
-                            <div class="tree-node-content">
-                              <div class="tree-node-dot" style="background:var(--amber-500);"></div>
-                              <span class="tree-node-id">VTC-00413</span>
-                              <span class="tree-node-cultivar">Ice Crystal</span>
-                              <span class="badge badge-green tree-node-stage">Multiplication</span>
-                              <span class="tree-node-gen">Gen 2</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="tree-child-branch">
-                          <div class="tree-node">
-                            <div class="tree-node-content">
-                              <div class="tree-node-dot" style="background:var(--gray-400);"></div>
-                              <span class="tree-node-id" style="opacity:0.5;">VTC-00414</span>
-                              <span class="tree-node-cultivar" style="opacity:0.5;">Ice Crystal</span>
-                              <span class="badge tree-node-stage" style="background:#f1f5f9;color:#94a3b8;">Disposed</span>
-                              <span class="tree-node-gen">Gen 2</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="tree-child-branch">
-                    <div class="tree-node">
-                      <div class="tree-node-content">
-                        <div class="tree-node-dot" style="background:var(--green-500);"></div>
-                        <span class="tree-node-id">VTC-00103</span>
-                        <span class="tree-node-cultivar">Ice Crystal</span>
-                        <span class="badge badge-purple tree-node-stage">Acclimation</span>
-                        <span class="tree-node-gen">Gen 1</span>
-                      </div>
-                      <div class="tree-children">
-                        <div class="tree-child-branch">
-                          <div class="tree-node">
-                            <div class="tree-node-content">
-                              <div class="tree-node-dot" style="background:var(--green-500);"></div>
-                              <span class="tree-node-id">VTC-00520</span>
-                              <span class="tree-node-cultivar">Ice Crystal</span>
-                              <span class="badge badge-blue tree-node-stage">Initiation</span>
-                              <span class="tree-node-gen">Gen 2</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="tree-child-branch">
-                          <div class="tree-node">
-                            <div class="tree-node-content">
-                              <div class="tree-node-dot" style="background:var(--red-500);"></div>
-                              <span class="tree-node-id">VTC-00521</span>
-                              <span class="tree-node-cultivar">Ice Crystal</span>
-                              <span class="badge badge-green tree-node-stage">Multiplication</span>
-                              <span class="tree-node-gen">Gen 2</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="tree-child-branch">
-                    <div class="tree-node">
-                      <div class="tree-node-content">
-                        <div class="tree-node-dot" style="background:var(--amber-500);"></div>
-                        <span class="tree-node-id">VTC-00104</span>
-                        <span class="tree-node-cultivar">Ice Crystal</span>
-                        <span class="badge badge-teal tree-node-stage">Hardening</span>
-                        <span class="tree-node-gen">Gen 1</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="annotation">Full genetic traceability — from mother plant to final product</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 5: MEDIA RECIPES -->
-  <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-5">
-    <div class="screen-image-container">
-      <img src="demo-screens/screen_5.png" alt="Media Recipes" class="screen-image">
-    </div>
-    <div class="annotation">&#129514; Standardize your media recipes across the entire lab</div>
-  </div>
-
-  <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 6: ANALYTICS -->
-  <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-6">
-    <div class="screen-image-container">
-      <img src="demo-screens/screen_6.png" alt="Analytics" class="screen-image">
-    </div>
-    <div class="annotation">&#128200; Real-time intelligence to catch problems before they spread</div>
-  </div>
-
-  <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 7: DAILY TASKS -->
-  <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-7">
-    <div class="screen-image-container">
-      <img src="demo-screens/screen_7.png" alt="Daily Tasks" class="screen-image">
+      <img src="demo-screens/screen_3.png" alt="Daily Tasks" class="screen-image">
     </div>
     <div class="annotation">&#128203; Morning briefing — your team's daily priorities at a glance</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 8: BATCH OPS -->
+  <!-- SCREEN 4: VESSELS -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-8">
+  <div class="screen" id="screen-4">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_8.png" alt="Batch Operations" class="screen-image">
+      <img src="demo-screens/screen_4.png" alt="Vessels" class="screen-image">
+    </div>
+    <div class="annotation">&#129516; Track every vessel from initiation to hardening — full lifecycle visibility</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 5: BATCH OPS -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-5">
+    <div class="screen-image-container">
+      <img src="demo-screens/screen_5.png" alt="Batch Operations" class="screen-image">
     </div>
     <div class="annotation">&#9889; Apply actions to dozens of vessels at once — batch efficiency</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 9: CULTIVARS & CLONE LINES -->
+  <!-- SCREEN 6: CULTIVARS -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-9">
+  <div class="screen" id="screen-6">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_9.png" alt="Cultivars" class="screen-image">
+      <img src="demo-screens/screen_6.png" alt="Cultivars" class="screen-image">
     </div>
     <div class="annotation">&#127793; Your complete cultivar library with health tracking</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 10: LOCATIONS & ENVIRONMENT -->
+  <!-- SCREEN 7: MEDIA -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-10">
+  <div class="screen" id="screen-7">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_10.png" alt="Locations" class="screen-image">
+      <img src="demo-screens/screen_7.png" alt="Media Recipes" class="screen-image">
+    </div>
+    <div class="annotation">&#129514; Standardize your media recipes across the entire lab</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 8: LOCATIONS -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-8">
+    <div class="screen-image-container">
+      <img src="demo-screens/screen_8.png" alt="Locations" class="screen-image">
     </div>
     <div class="annotation">&#128205; Map your facility and monitor environmental conditions</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 11: INVENTORY -->
+  <!-- SCREEN 9: INVENTORY -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-11">
+  <div class="screen" id="screen-9">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_11.png" alt="Inventory" class="screen-image">
+      <img src="demo-screens/screen_9.png" alt="Inventory" class="screen-image">
     </div>
     <div class="annotation">&#128230; Never run out of supplies — automated stock tracking</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 12: LAB ASSISTANT -->
+  <!-- SCREEN 10: LAB ASSISTANT -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-12">
+  <div class="screen" id="screen-10">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_12.png" alt="Lab Assistant" class="screen-image">
+      <img src="demo-screens/screen_10.png" alt="Lab Assistant" class="screen-image">
     </div>
     <div class="annotation">&#129302; Ask your lab data anything — AI-powered insights in seconds</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 13: TEAM PERFORMANCE -->
+  <!-- SCREEN 11: ANALYTICS -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-13">
+  <div class="screen" id="screen-11">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_13.png" alt="Team Performance" class="screen-image">
+      <img src="demo-screens/screen_11.png" alt="Analytics" class="screen-image">
+    </div>
+    <div class="annotation">&#128200; Real-time intelligence to catch problems before they spread</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 12: TEAM PERFORMANCE -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-12">
+    <div class="screen-image-container">
+      <img src="demo-screens/screen_12.png" alt="Team Performance" class="screen-image">
     </div>
     <div class="annotation">&#128101; Track team contributions and balance workloads</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 14: FORECASTING & DEMAND PLANNING -->
+  <!-- SCREEN 13: FORECASTING -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-14">
+  <div class="screen" id="screen-13">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_14.png" alt="Forecasting" class="screen-image">
+      <img src="demo-screens/screen_13.png" alt="Forecasting" class="screen-image">
     </div>
     <div class="annotation">&#128302; Plan ahead — forecast harvests and fulfill client orders on time</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 15: REPORTS & AUDIT LOG -->
+  <!-- SCREEN 14: REPORTS -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-15">
+  <div class="screen" id="screen-14">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_15.png" alt="Reports" class="screen-image">
+      <img src="demo-screens/screen_14.png" alt="Reports" class="screen-image">
     </div>
     <div class="annotation">&#128196; One-click reports and full audit trail for compliance</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 16: SOPs -->
+  <!-- SCREEN 15: SOPs -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-16">
+  <div class="screen" id="screen-15">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_16.png" alt="SOPs" class="screen-image">
+      <img src="demo-screens/screen_15.png" alt="SOPs" class="screen-image">
     </div>
     <div class="annotation">&#128216; Standard procedures at your team's fingertips</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 17: ADMIN -->
+  <!-- SCREEN 16: ADMIN -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-17">
+  <div class="screen" id="screen-16">
     <div class="screen-image-container">
-      <img src="demo-screens/screen_17.png" alt="Admin" class="screen-image">
+      <img src="demo-screens/screen_16.png" alt="Admin" class="screen-image">
     </div>
     <div class="annotation">&#9881;&#65039; Full control — labels, integrations, billing, and settings</div>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- SCREEN 18: CTA -->
+  <!-- SCREEN 17: CTA -->
   <!-- ══════════════════════════════════════════ -->
-  <div class="screen" id="screen-18">
+  <div class="screen" id="screen-17">
     <div class="cta-screen">
       <div class="cta-content">
         <div class="welcome-logo" style="justify-content:center;margin-bottom:48px;animation:fadeUp 0.6s ease 0.1s forwards;opacity:0;">
@@ -945,7 +647,7 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
   </button>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
     <div class="nav-dots" id="nav-dots"></div>
-    <div class="nav-step" id="nav-step">1 of 19</div>
+    <div class="nav-step" id="nav-step">1 of 18</div>
   </div>
   <button class="nav-btn nav-btn-next" id="btn-next" onclick="nextScreen()">
     Next
@@ -954,7 +656,7 @@ body { font-family: var(--font-sans); color: var(--fg); background: var(--bg); o
 </div>
 
 <script>
-const TOTAL = 19;
+const TOTAL = 18;
 let current = 0;
 
 // ─── Audio Voiceover Engine ───

@@ -79,11 +79,13 @@ export const toolDefinitions: Tool[] = [
   {
     name: "query_forecasting",
     description:
-      "Get current vessel inventory by stage for production forecasting and projections.",
+      "Run production forecasting projections. Shows current inventory by stage AND calculates week-by-week projections of how many vessels will be ready at each stage. Use this when asked about future output, projections, or 'how many will I have in X weeks'.",
     input_schema: {
       type: "object" as const,
       properties: {
         cultivarName: { type: "string", description: "Filter by cultivar name for cultivar-specific forecast" },
+        weeksAhead: { type: "number", description: "How many weeks to project forward (default 8, max 44)" },
+        targetOutput: { type: "number", description: "Target number of finished plants needed. If provided, calculates backward requirements (how many vessels to initiate now)." },
       },
       required: [],
     },
@@ -344,14 +346,138 @@ async function executeQueryForecasting(params: ToolParams, organizationId: strin
   });
 
   const total = await prisma.vessel.count({ where: vesselWhere });
-
   const stageBreakdown = Object.fromEntries(byStage.map((s) => [s.stage, s._count]));
+
+  // Get cultivar-specific stage config if filtering by cultivar
+  let stageConfig = null;
+  if (params.cultivarName) {
+    const cultivar = await prisma.cultivar.findFirst({
+      where: { organizationId, name: { contains: params.cultivarName, mode: "insensitive" } },
+      select: { name: true, stageConfig: true, targetMultiplicationRate: true },
+    });
+    if (cultivar?.stageConfig) {
+      stageConfig = cultivar.stageConfig;
+    }
+  }
+
+  // Default stage parameters
+  const stages = [
+    { stage: "initiation", durationWeeks: 4, multiplicationRate: 1, survivalRate: 0.85 },
+    { stage: "multiplication", durationWeeks: 6, multiplicationRate: 3, survivalRate: 0.92 },
+    { stage: "rooting", durationWeeks: 4, multiplicationRate: 1, survivalRate: 0.90 },
+    { stage: "acclimation", durationWeeks: 4, multiplicationRate: 1, survivalRate: 0.88 },
+    { stage: "hardening", durationWeeks: 3, multiplicationRate: 1, survivalRate: 0.95 },
+  ];
+
+  // Override with cultivar-specific config if available
+  if (stageConfig && typeof stageConfig === "object") {
+    const config = stageConfig as Record<string, { weeks?: number; multiplicationRate?: number; survivalRate?: number }>;
+    for (const s of stages) {
+      const override = config[s.stage];
+      if (override) {
+        if (override.weeks) s.durationWeeks = override.weeks;
+        if (override.multiplicationRate) s.multiplicationRate = override.multiplicationRate;
+        if (override.survivalRate) s.survivalRate = override.survivalRate;
+      }
+    }
+  }
+
+  // Run week-by-week projection
+  const weeksAhead = Math.min(params.weeksAhead || 8, 44);
+  const projections: { week: number; initiation: number; multiplication: number; rooting: number; acclimation: number; hardening: number; readyToShip: number }[] = [];
+
+  let current = {
+    initiation: stageBreakdown["initiation"] || 0,
+    multiplication: stageBreakdown["multiplication"] || 0,
+    rooting: stageBreakdown["rooting"] || 0,
+    acclimation: stageBreakdown["acclimation"] || 0,
+    hardening: stageBreakdown["hardening"] || 0,
+  };
+
+  let cumulativeReady = 0;
+
+  for (let w = 1; w <= weeksAhead; w++) {
+    const next = { ...current };
+
+    // Hardening finishes -> ready to ship
+    const hardeningStage = stages.find((s) => s.stage === "hardening")!;
+    if (w % hardeningStage.durationWeeks === 0) {
+      const graduating = Math.floor(current.hardening * hardeningStage.survivalRate);
+      cumulativeReady += graduating;
+      next.hardening = 0;
+    }
+
+    // Acclimation finishes -> hardening
+    const acclimStage = stages.find((s) => s.stage === "acclimation")!;
+    if (w % acclimStage.durationWeeks === 0) {
+      const moving = Math.floor(current.acclimation * acclimStage.survivalRate);
+      next.hardening += moving;
+      next.acclimation = 0;
+    }
+
+    // Rooting finishes -> acclimation
+    const rootStage = stages.find((s) => s.stage === "rooting")!;
+    if (w % rootStage.durationWeeks === 0) {
+      const moving = Math.floor(current.rooting * rootStage.survivalRate);
+      next.acclimation += moving;
+      next.rooting = 0;
+    }
+
+    // Multiplication finishes -> rooting (with multiplication rate)
+    const multStage = stages.find((s) => s.stage === "multiplication")!;
+    if (w % multStage.durationWeeks === 0) {
+      const output = Math.floor(current.multiplication * multStage.multiplicationRate * multStage.survivalRate);
+      next.rooting += output;
+      next.multiplication = 0;
+    }
+
+    // Initiation finishes -> multiplication
+    const initStage = stages.find((s) => s.stage === "initiation")!;
+    if (w % initStage.durationWeeks === 0) {
+      const moving = Math.floor(current.initiation * initStage.survivalRate);
+      next.multiplication += moving;
+      next.initiation = 0;
+    }
+
+    current = next;
+    projections.push({
+      week: w,
+      ...current,
+      readyToShip: cumulativeReady,
+    });
+  }
+
+  // Backward requirements if target output specified
+  let backwardPlan = null;
+  if (params.targetOutput) {
+    const target = params.targetOutput;
+    let needed = target;
+    const requirements: Record<string, number> = {};
+    for (let i = stages.length - 1; i >= 0; i--) {
+      needed = Math.ceil(needed / stages[i].survivalRate);
+      needed = Math.ceil(needed / stages[i].multiplicationRate);
+      requirements[stages[i].stage] = needed;
+    }
+    const totalWeeks = stages.reduce((sum, s) => sum + s.durationWeeks, 0);
+    const initiationDeadline = new Date(Date.now() - totalWeeks * 7 * 86400000 + (params.weeksAhead || 8) * 7 * 86400000);
+
+    backwardPlan = {
+      targetOutput: target,
+      vesselsNeededAtInitiation: requirements["initiation"],
+      requirementsByStage: requirements,
+      totalPipelineWeeks: totalWeeks,
+      initiationDeadline: initiationDeadline.toISOString().split("T")[0],
+    };
+  }
 
   return {
     cultivarFilter: params.cultivarName || "all",
     totalActiveVessels: total,
-    byStage: stageBreakdown,
-    summary: `Currently ${total} active vessels: ${stageBreakdown["initiation"] || 0} in initiation, ${stageBreakdown["multiplication"] || 0} in multiplication, ${stageBreakdown["rooting"] || 0} in rooting, ${stageBreakdown["acclimation"] || 0} in acclimation, ${stageBreakdown["hardening"] || 0} in hardening.`,
+    currentByStage: stageBreakdown,
+    stageParameters: stages.map((s) => ({ stage: s.stage, weeks: s.durationWeeks, multRate: s.multiplicationRate, survivalRate: `${(s.survivalRate * 100).toFixed(0)}%` })),
+    projections: projections.filter((_, i) => i % 2 === 1 || i === projections.length - 1), // Every other week + final
+    backwardPlan,
+    summary: `Currently ${total} active vessels. In ${weeksAhead} weeks, projected ${projections[projections.length - 1]?.readyToShip || 0} cumulative vessels ready to ship.`,
   };
 }
 

@@ -50,3 +50,8 @@ next-env.d.ts
 # database
 *.db
 *.db-journal
+
+# customer-specific seed scripts and data (contain real PII / credentials)
+/prisma/seed-rascal-*.ts
+/prisma/seed-data/*
+!/prisma/seed-data/*.example.json
