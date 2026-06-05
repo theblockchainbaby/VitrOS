@@ -62,6 +62,11 @@ export interface Vessel {
   plantedAt: string | null;
   lastSubcultureDate: string | null;
   nextSubcultureDate: string | null;
+  // Phase 1 multi-vertical
+  isOffType?: boolean;
+  offTypeNotes?: string | null;
+  isMotherPlant?: boolean;
+  motherPlantNotes?: string | null;
   createdAt: string;
   updatedAt: string;
   // Relations

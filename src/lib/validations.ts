@@ -41,6 +41,12 @@ export const updateVesselSchema = z.object({
   contaminationDate: z.string().datetime().nullable().optional(),
   disposalReason: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  // Phase 1 multi-vertical: off-type / somaclonal variation tracking
+  isOffType: z.boolean().optional(),
+  offTypeNotes: z.string().nullable().optional(),
+  // Formal mother plant designation
+  isMotherPlant: z.boolean().optional(),
+  motherPlantNotes: z.string().nullable().optional(),
 });
 
 export const multiplyVesselSchema = z.object({
@@ -96,6 +102,10 @@ export const createCultivarSchema = z.object({
       survivalRate: z.number().min(0).max(1),
     })),
   }).nullable().optional(),
+  // Phase 1 multi-vertical: hierarchy + breeder attribution
+  parentCultivarId: z.string().nullable().optional(),
+  breederCredit: z.string().nullable().optional(),
+  trademarkRef: z.string().nullable().optional(),
 });
 
 export const updateCultivarSchema = createCultivarSchema.partial();

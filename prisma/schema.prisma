@@ -173,10 +173,19 @@ model Cultivar {
   code                     String?
   cultivarType             String       @default("in_house")
   stageConfig              Json?
+  // Phase 1 multi-vertical: hierarchy + breeder credit
+  // parentCultivarId enables species -> variety -> sport relationships
+  // (e.g. Musa acuminata -> Cavendish -> Williams) for banana, ornamental,
+  // and any vertical with named clonal variants of a base variety.
+  parentCultivarId         String?
+  breederCredit            String?
+  trademarkRef             String?
   cloneLines               CloneLine[]
   defaultMediaRecipe       MediaRecipe? @relation("DefaultRecipe", fields: [defaultMediaRecipeId], references: [id])
   incentivePointRules      IncentivePointRule[]
   organization             Organization @relation(fields: [organizationId], references: [id])
+  parentCultivar           Cultivar?    @relation("CultivarHierarchy", fields: [parentCultivarId], references: [id])
+  childCultivars           Cultivar[]   @relation("CultivarHierarchy")
   photos                   Photo[]      @relation("CultivarPhotos")
   salesOrders              SalesOrder[]
   vessels                  Vessel[]
@@ -184,6 +193,7 @@ model Cultivar {
   @@unique([name, organizationId])
   @@unique([code, organizationId])
   @@index([organizationId])
+  @@index([parentCultivarId])
 }
 
 model MediaRecipe {
@@ -262,6 +272,16 @@ model Vessel {
   lastSubcultureDate DateTime?
   cloneLineId        String?
   explantType        String?
+  // Phase 1 multi-vertical: off-type / somaclonal variation tracking for
+  // banana and any clonal propagation where rogues matter. Distinct from
+  // contamination because the plant is healthy but genetically diverged.
+  isOffType          Boolean      @default(false)
+  offTypeNotes       String?
+  // Formal mother plant designation for cannabis, rare-collector, and
+  // breeding programs. A vessel can be the source for downstream cuttings;
+  // tracking it explicitly avoids the "where did this come from" problem.
+  isMotherPlant      Boolean      @default(false)
+  motherPlantNotes   String?
   activities         Activity[]
   photos             Photo[]      @relation("VesselPhotos")
   cloneLine          CloneLine?   @relation(fields: [cloneLineId], references: [id])
@@ -284,6 +304,8 @@ model Vessel {
   @@index([nextSubcultureDate])
   @@index([parentVesselId])
   @@index([cloneLineId])
+  @@index([organizationId, isMotherPlant])
+  @@index([organizationId, isOffType])
 }
 
 model Activity {
@@ -428,6 +450,16 @@ model CloneLine {
   lastTestResult String?
   lastTestedAt   DateTime?
   lineNumber     Int?
+  // Phase 1 multi-vertical: per-population provenance for conservation labs
+  // (DBG-style ESA Section 6 work) and accession-level wild-collection
+  // tracking. collectionGPS stored as "lat,lng" text for simplicity.
+  collectionSite String?
+  collectionGPS  String?
+  voucherRef     String?
+  // releaseStatus is the clean-stock chain step for berry / tree fruit /
+  // citrus / grape clean-stock programs (FPS / NCGR style):
+  // null | "source" | "foundation" | "registered" | "certified" | "retired"
+  releaseStatus  String?
   cultivar       Cultivar       @relation(fields: [cultivarId], references: [id])
   organization   Organization   @relation(fields: [organizationId], references: [id])
   pathogenTests  PathogenTest[]
@@ -437,6 +469,7 @@ model CloneLine {
   @@index([organizationId])
   @@index([cultivarId])
   @@index([status])
+  @@index([organizationId, releaseStatus])
 }
 
 model SalesOrder {

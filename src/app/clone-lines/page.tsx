@@ -24,7 +24,20 @@ interface CloneLine {
   byStage: Record<string, number>;
   byHealth: Record<string, number>;
   createdAt: string;
+  // Phase 1 multi-vertical
+  collectionSite?: string | null;
+  collectionGPS?: string | null;
+  voucherRef?: string | null;
+  releaseStatus?: string | null;
 }
+
+const RELEASE_STATUS_COLORS: Record<string, string> = {
+  source: "bg-slate-500/10 text-slate-600",
+  foundation: "bg-blue-500/10 text-blue-600",
+  registered: "bg-violet-500/10 text-violet-600",
+  certified: "bg-green-600/10 text-green-700",
+  retired: "bg-gray-400/10 text-gray-500",
+};
 
 interface Cultivar {
   id: string;
@@ -43,12 +56,17 @@ export default function CloneLinesPage() {
   const [cultivars, setCultivars] = useState<Cultivar[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [releaseFilter, setReleaseFilter] = useState<string>("all");
   const [form, setForm] = useState({
     name: "",
     code: "",
     cultivarId: "",
     sourceType: "mother_plant",
     notes: "",
+    collectionSite: "",
+    collectionGPS: "",
+    voucherRef: "",
+    releaseStatus: "",
   });
 
   useEffect(() => {
@@ -70,15 +88,28 @@ export default function CloneLinesPage() {
         ...form,
         code: form.code || null,
         notes: form.notes || null,
+        collectionSite: form.collectionSite || null,
+        collectionGPS: form.collectionGPS || null,
+        voucherRef: form.voucherRef || null,
+        releaseStatus: form.releaseStatus || null,
       }),
     });
     if (res.ok) {
       setDialogOpen(false);
-      setForm({ name: "", code: "", cultivarId: "", sourceType: "mother_plant", notes: "" });
+      setForm({
+        name: "", code: "", cultivarId: "", sourceType: "mother_plant", notes: "",
+        collectionSite: "", collectionGPS: "", voucherRef: "", releaseStatus: "",
+      });
       const updated = await fetch("/api/clone-lines").then((r) => r.json());
       setCloneLines(updated);
     }
   }
+
+  const filteredLines = releaseFilter === "all"
+    ? cloneLines
+    : releaseFilter === "none"
+      ? cloneLines.filter((cl) => !cl.releaseStatus)
+      : cloneLines.filter((cl) => cl.releaseStatus === releaseFilter);
 
   const totalVessels = cloneLines.reduce((sum, cl) => sum + cl.vesselCount, 0);
   const activeLines = cloneLines.filter((cl) => cl.status === "active").length;
@@ -178,6 +209,58 @@ export default function CloneLinesPage() {
                   className="mt-1"
                 />
               </div>
+
+              <div className="pt-3 border-t">
+                <p className="text-xs font-medium text-muted-foreground mb-3">Conservation provenance (optional, for wild-collected accessions)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Collection site</Label>
+                    <Input
+                      placeholder="e.g. Sheehy Springs"
+                      value={form.collectionSite}
+                      onChange={(e) => setForm({ ...form, collectionSite: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">GPS (lat,lng)</Label>
+                    <Input
+                      placeholder="e.g. 31.4823,-110.5421"
+                      value={form.collectionGPS}
+                      onChange={(e) => setForm({ ...form, collectionGPS: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <Label className="text-xs">Voucher / accession reference</Label>
+                  <Input
+                    placeholder="e.g. DBG-SPI-2026-001"
+                    value={form.voucherRef}
+                    onChange={(e) => setForm({ ...form, voucherRef: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t">
+                <Label className="text-xs">Clean-stock release status (optional, FPS / NCGR chain)</Label>
+                <Select
+                  value={form.releaseStatus || "none"}
+                  onValueChange={(v) => setForm({ ...form, releaseStatus: v === "none" ? "" : v })}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not classified</SelectItem>
+                    <SelectItem value="source">Source</SelectItem>
+                    <SelectItem value="foundation">Foundation</SelectItem>
+                    <SelectItem value="registered">Registered</SelectItem>
+                    <SelectItem value="certified">Certified</SelectItem>
+                    <SelectItem value="retired">Retired</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button onClick={handleCreate} className="w-full" disabled={!form.name || !form.cultivarId}>
                 Create Clone Line
               </Button>
@@ -186,20 +269,48 @@ export default function CloneLinesPage() {
         </Dialog>
       </div>
 
+      {/* Release-status filter */}
+      {cloneLines.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Label className="text-sm">Release status:</Label>
+          <Select value={releaseFilter} onValueChange={setReleaseFilter}>
+            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All lines</SelectItem>
+              <SelectItem value="none">Not classified</SelectItem>
+              <SelectItem value="source">Source</SelectItem>
+              <SelectItem value="foundation">Foundation</SelectItem>
+              <SelectItem value="registered">Registered</SelectItem>
+              <SelectItem value="certified">Certified</SelectItem>
+              <SelectItem value="retired">Retired</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground">
+            {filteredLines.length} of {cloneLines.length}
+          </span>
+        </div>
+      )}
+
       {/* Clone lines list */}
       {loading ? (
         <Card><CardContent className="py-8 text-center text-muted-foreground">Loading...</CardContent></Card>
-      ) : cloneLines.length === 0 ? (
+      ) : filteredLines.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <GitBranch className="size-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium">No Clone Lines Yet</h3>
-            <p className="text-muted-foreground mt-1">Create your first clone line to start tracking genetic lineages.</p>
+            <h3 className="text-lg font-medium">
+              {cloneLines.length === 0 ? "No Clone Lines Yet" : "No lines match this filter"}
+            </h3>
+            <p className="text-muted-foreground mt-1">
+              {cloneLines.length === 0
+                ? "Create your first clone line to start tracking genetic lineages."
+                : "Try a different release-status filter."}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4">
-          {cloneLines.map((cl) => (
+          {filteredLines.map((cl) => (
             <Card key={cl.id}>
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between">
@@ -215,12 +326,23 @@ export default function CloneLinesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {cl.releaseStatus && (
+                      <Badge className={RELEASE_STATUS_COLORS[cl.releaseStatus] || "bg-muted"}>
+                        {cl.releaseStatus}
+                      </Badge>
+                    )}
                     <Badge className={STATUS_COLORS[cl.status]}>{cl.status}</Badge>
                     <Badge variant="outline" className="gap-1">
                       <FlaskConical className="size-3" /> {cl.vesselCount}
                     </Badge>
                   </div>
                 </div>
+                {(cl.collectionSite || cl.voucherRef) && (
+                  <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                    {cl.collectionSite && <div>Wild population: {cl.collectionSite}{cl.collectionGPS ? ` (${cl.collectionGPS})` : ""}</div>}
+                    {cl.voucherRef && <div>Voucher: <span className="font-mono">{cl.voucherRef}</span></div>}
+                  </div>
+                )}
 
                 {/* Stage breakdown */}
                 {cl.vesselCount > 0 && (

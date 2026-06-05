@@ -83,6 +83,11 @@ export const LOCATION_TYPES = [
   "greenhouse",
   "shelf",
   "cold_storage",
+  // Phase 1 multi-vertical additions
+  "hardening_yard", // banana, tree fruit, ornamental: in-vitro to field transition
+  "gene_bank",      // conservation, USDA NPGS, potato seed: slow-grow maintenance
+  "mother_room",    // cannabis, rare-collector, breeding: dedicated mother plant area
+  "field_trial",    // forest, banana, breeding: outplanted material under evaluation
 ] as const;
 
 export const LOCATION_TYPE_LABELS: Record<string, string> = {
@@ -92,6 +97,10 @@ export const LOCATION_TYPE_LABELS: Record<string, string> = {
   greenhouse: "Greenhouse",
   shelf: "Shelf",
   cold_storage: "Cold Storage",
+  hardening_yard: "Hardening Yard",
+  gene_bank: "Gene Bank",
+  mother_room: "Mother Room",
+  field_trial: "Field Trial",
 };
 
 export const CONTAMINATION_TYPES = [

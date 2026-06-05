@@ -645,6 +645,92 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         </CardContent>
       </Card>
 
+      {/* Phase 1 multi-vertical: designations */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between">
+            <span>Designations</span>
+            {(vessel.isMotherPlant || vessel.isOffType) && (
+              <span className="flex gap-1">
+                {vessel.isMotherPlant && <span className="text-xs px-2 py-0.5 rounded bg-violet-500/10 text-violet-600 font-medium">Mother plant</span>}
+                {vessel.isOffType && <span className="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 font-medium">Off-type</span>}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="font-medium">Mother plant</div>
+              <p className="text-xs text-muted-foreground">Designate this vessel as a source for downstream cuttings or subcultures. Used by cannabis, breeding, and rare-collector workflows.</p>
+              {vessel.motherPlantNotes && (
+                <p className="text-xs mt-1 italic">{vessel.motherPlantNotes}</p>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant={vessel.isMotherPlant ? "default" : "outline"}
+              onClick={async () => {
+                const notes = vessel.isMotherPlant
+                  ? null
+                  : (prompt("Notes about this mother plant (optional):") || null);
+                const res = await fetch(`/api/vessels/${vessel.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ isMotherPlant: !vessel.isMotherPlant, motherPlantNotes: notes }),
+                });
+                if (res.ok) {
+                  toast.success(vessel.isMotherPlant ? "Mother plant designation removed" : "Designated as mother plant");
+                  router.refresh();
+                  const updated = await fetch(`/api/vessels/${vessel.id}`).then((r) => r.json());
+                  setVessel(updated);
+                } else {
+                  toast.error("Failed to update designation");
+                }
+              }}
+            >
+              {vessel.isMotherPlant ? "Remove" : "Designate"}
+            </Button>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="font-medium">Off-type / somaclonal variation</div>
+              <p className="text-xs text-muted-foreground">Flag if this vessel shows phenotypic divergence from the expected variety. Healthy plant, but genetically off. Used by banana and any clonal-propagation lab tracking rogues.</p>
+              {vessel.offTypeNotes && (
+                <p className="text-xs mt-1 italic">{vessel.offTypeNotes}</p>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant={vessel.isOffType ? "default" : "outline"}
+              onClick={async () => {
+                const notes = vessel.isOffType
+                  ? null
+                  : (prompt("What's off about this vessel? (e.g., leaf variegation pattern, reduced vigor):") || null);
+                const res = await fetch(`/api/vessels/${vessel.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ isOffType: !vessel.isOffType, offTypeNotes: notes }),
+                });
+                if (res.ok) {
+                  toast.success(vessel.isOffType ? "Off-type flag removed" : "Flagged as off-type");
+                  router.refresh();
+                  const updated = await fetch(`/api/vessels/${vessel.id}`).then((r) => r.json());
+                  setVessel(updated);
+                } else {
+                  toast.error("Failed to update designation");
+                }
+              }}
+            >
+              {vessel.isOffType ? "Clear" : "Flag"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Media Batch Traceability */}
       {vessel.mediaBatch && (
         <Card>

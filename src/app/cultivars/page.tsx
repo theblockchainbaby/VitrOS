@@ -31,6 +31,10 @@ export default function CultivarsPage() {
   const [cultivarType, setCultivarType] = useState("in_house");
   const [species, setSpecies] = useState("");
   const [description, setDescription] = useState("");
+  // Phase 1 multi-vertical fields
+  const [parentCultivarId, setParentCultivarId] = useState<string>("");
+  const [breederCredit, setBreederCredit] = useState("");
+  const [trademarkRef, setTrademarkRef] = useState("");
 
   const fetchCultivars = () => {
     fetch("/api/cultivars")
@@ -68,6 +72,9 @@ export default function CultivarsPage() {
         cultivarType,
         species,
         description: description || null,
+        parentCultivarId: parentCultivarId || null,
+        breederCredit: breederCredit.trim() || null,
+        trademarkRef: trademarkRef.trim() || null,
       }),
     });
     if (res.ok) {
@@ -77,6 +84,9 @@ export default function CultivarsPage() {
       setCultivarType("in_house");
       setSpecies("");
       setDescription("");
+      setParentCultivarId("");
+      setBreederCredit("");
+      setTrademarkRef("");
       setOpen(false);
       fetchCultivars();
     } else {
@@ -140,6 +150,29 @@ export default function CultivarsPage() {
                 <div className="space-y-2">
                   <Label>Description (optional)</Label>
                   <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Notes about this cultivar" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Parent cultivar (optional)</Label>
+                    <Select value={parentCultivarId || "none"} onValueChange={(v) => setParentCultivarId(v === "none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {cultivars.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}{c.code ? ` (${c.code})` : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">Use for species → variety → sport (e.g. Musa acuminata → Cavendish → Williams)</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Breeder / source (optional)</Label>
+                    <Input value={breederCredit} onChange={(e) => setBreederCredit(e.target.value)} placeholder="e.g., DBG, Proven Winners" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Trademark / registration ref (optional)</Label>
+                  <Input value={trademarkRef} onChange={(e) => setTrademarkRef(e.target.value)} placeholder="e.g., 'Whipper Snapper®', PVP 200300168" />
                 </div>
                 <Button onClick={handleCreate} className="w-full">Create Cultivar</Button>
               </div>

@@ -10,6 +10,11 @@ const updateCloneLineSchema = z.object({
   status: z.enum(["active", "retired", "quarantined"]).optional(),
   sourceType: z.enum(["mother_plant", "meristem", "seed"]).optional(),
   notes: z.string().nullable().optional(),
+  // Phase 1 multi-vertical: conservation provenance + clean-stock chain
+  collectionSite: z.string().nullable().optional(),
+  collectionGPS: z.string().nullable().optional(),
+  voucherRef: z.string().nullable().optional(),
+  releaseStatus: z.enum(["source", "foundation", "registered", "certified", "retired"]).nullable().optional(),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

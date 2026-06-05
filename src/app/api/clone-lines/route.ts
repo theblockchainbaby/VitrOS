@@ -11,6 +11,11 @@ const createCloneLineSchema = z.object({
   sourceType: z.enum(["mother_plant", "meristem", "seed"]).default("mother_plant"),
   motherPlantId: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  // Phase 1 multi-vertical: conservation provenance + clean-stock chain
+  collectionSite: z.string().nullable().optional(),
+  collectionGPS: z.string().nullable().optional(),
+  voucherRef: z.string().nullable().optional(),
+  releaseStatus: z.enum(["source", "foundation", "registered", "certified", "retired"]).nullable().optional(),
 });
 
 export async function GET(req: NextRequest) {
