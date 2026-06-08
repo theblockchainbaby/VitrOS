@@ -916,7 +916,7 @@ export function LandingPage() {
               <figure className="anchor__figure">
                 <div className="anchor__img-wrap">
                   <Image
-                    src="/images/homepage/tc-rascal.png"
+                    src="/images/homepage/tc-rascal.jpg"
                     alt="A tissue culture technician in PPE working at an Airtech laminar flow hood, transferring plantlets between sterile jars."
                     fill
                     sizes="(max-width: 56rem) 100vw, 60vw"
@@ -1091,7 +1091,7 @@ export function LandingPage() {
                 <Link className="vprimary" href="/signup">
                   <div className="vprimary__frame">
                     <Image
-                      src="/images/homepage/tc-verticals.png"
+                      src="/images/homepage/tc-verticals.jpg"
                       alt="Working commercial tissue culture production room: long stainless steel rack stacked five shelves high, hundreds of glass culture jars with barcode-labeled white lids."
                       fill
                       sizes="(max-width: 64rem) 100vw, 50vw"
