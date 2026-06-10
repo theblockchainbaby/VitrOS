@@ -9,6 +9,9 @@ VitrOS replaces the spreadsheets and paper logs that most tissue-culture labs st
 > 🎥 **2-min walkthrough:** [video link](#) <!-- TODO: reuse the VitrOS walkthrough video from your Apr 16 investor update -->
 
 ![VitrOS dashboard](docs/screenshots/dashboard.png)
+<img width="1494" height="816" alt="Screenshot 2026-06-09 at 5 38 08 PM" src="https://github.com/user-attachments/assets/4d96a4cf-064e-4a60-a4f1-464518eb69e5" />
+<img width="1493" height="814" alt="Screenshot 2026-06-09 at 5 39 16 PM" src="https://github.com/user-attachments/assets/44edf7f9-f488-4094-873d-00006afbec79" />
+<img width="1496" height="814" alt="Screenshot 2026-06-09 at 5 43 58 PM" src="https://github.com/user-attachments/assets/6e52d370-8acc-40da-9e4d-371dd55def0f" />
 <!-- TODO: add 2-3 screenshots: dashboard, vessel genealogy view, contamination trace. Visual proof is the highest-ROI 20 minutes you can spend on this repo. -->
 
 ## Why it exists
