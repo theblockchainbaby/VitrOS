@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { sendWelcomeEmail } from "@/lib/email";
 
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -76,6 +77,17 @@ export async function POST(req: NextRequest) {
 
       return { user, org };
     });
+
+    // Send welcome email — never block the response on email delivery.
+    try {
+      await sendWelcomeEmail({
+        to: result.user.email,
+        name: result.user.name,
+        orgName: result.org.name,
+      });
+    } catch (emailError) {
+      console.error("[Register] Failed to send welcome email:", emailError);
+    }
 
     return NextResponse.json({
       success: true,

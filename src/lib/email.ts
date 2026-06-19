@@ -4,7 +4,8 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM_EMAIL = process.env.EMAIL_FROM || "VitrOS <onboarding@resend.dev>";
+const FROM_EMAIL = process.env.EMAIL_FROM || "VitrOS <noreply@vitroslabs.com>";
+const REPLY_TO_EMAIL = process.env.EMAIL_REPLY_TO || "support@vitroslabs.com";
 
 interface EmailOptions {
   to: string | string[];
@@ -22,6 +23,7 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     const result = await resend.emails.send({
       from: FROM_EMAIL,
       to: Array.isArray(to) ? to : [to],
+      replyTo: REPLY_TO_EMAIL,
       subject,
       html,
     });
@@ -30,6 +32,68 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     console.error("[Email] Failed to send:", error);
     return null;
   }
+}
+
+// Account / transactional templates
+
+const APP_URL = process.env.AUTH_URL || "https://vitroslabs.com";
+
+export async function sendWelcomeEmail(params: {
+  to: string;
+  name: string;
+  orgName: string;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: "Welcome to VitrOS",
+    html: `
+      <div style="font-family: system-ui, sans-serif; max-width: 500px;">
+        <div style="background: #2563eb; color: white; padding: 12px 16px; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0; font-size: 16px;">Welcome to VitrOS</h2>
+        </div>
+        <div style="border: 1px solid #e5e7eb; border-top: none; padding: 16px; border-radius: 0 0 8px 8px;">
+          <p style="margin: 0 0 12px; font-size: 14px; color: #374151;">Hi ${params.name},</p>
+          <p style="margin: 0 0 12px; font-size: 14px; color: #374151;">
+            Your lab <strong>${params.orgName}</strong> is set up and ready. VitrOS helps you track vessels, catch contamination early, and keep your tissue culture operation running smoothly.
+          </p>
+          <p style="margin: 0 0 16px; font-size: 14px; color: #374151;">
+            Your free trial is active. Log in to add your first vessels and invite your team.
+          </p>
+          <a href="${APP_URL}" style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">Open VitrOS</a>
+          <p style="margin-top: 16px; font-size: 13px; color: #6b7280;">Questions? Just reply to this email and we'll help.</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+export async function sendPasswordResetEmail(params: {
+  to: string;
+  resetUrl: string;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: "Reset your VitrOS password",
+    html: `
+      <div style="font-family: system-ui, sans-serif; max-width: 500px;">
+        <div style="background: #2563eb; color: white; padding: 12px 16px; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0; font-size: 16px;">Reset your password</h2>
+        </div>
+        <div style="border: 1px solid #e5e7eb; border-top: none; padding: 16px; border-radius: 0 0 8px 8px;">
+          <p style="margin: 0 0 12px; font-size: 14px; color: #374151;">
+            We received a request to reset the password for your VitrOS account. Click the button below to choose a new password. This link expires in 1 hour.
+          </p>
+          <a href="${params.resetUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">Reset Password</a>
+          <p style="margin-top: 16px; font-size: 13px; color: #6b7280;">
+            If you didn't request this, you can safely ignore this email and your password will stay the same.
+          </p>
+          <p style="margin-top: 12px; font-size: 12px; color: #9ca3af; word-break: break-all;">
+            Or paste this link into your browser: ${params.resetUrl}
+          </p>
+        </div>
+      </div>
+    `,
+  });
 }
 
 // Pre-built alert templates
