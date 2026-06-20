@@ -17,6 +17,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!login|signup|pricing|features|demo|why-vitros|blog|studio|api/auth|api/setup|api/webhooks|api/unsubscribe|unsubscribed|_next/static|_next/image|favicon.ico|logo\\.png|logo-text\\.png|email-logo\\.png|icons/|images/|apple-touch-icon\\.png|manifest.json|sitemap.xml|robots.txt).+)",
+    "/((?!login|signup|forgot-password|reset-password|pricing|features|demo|why-vitros|blog|studio|api/auth|api/setup|api/webhooks|api/unsubscribe|unsubscribed|_next/static|_next/image|favicon.ico|logo\\.png|logo-text\\.png|email-logo\\.png|icons/|images/|apple-touch-icon\\.png|manifest.json|sitemap.xml|robots.txt).+)",
   ],
 };

@@ -1,14 +1,19 @@
 import { Resend } from "resend";
 import { isSuppressed, unsubscribeUrl } from "./unsubscribe";
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
+const resend = process.env.OUTREACH_RESEND_API_KEY
+  ? new Resend(process.env.OUTREACH_RESEND_API_KEY)
   : null;
 
 /**
  * Cold-outreach / marketing email path. Distinct from src/lib/email.ts
  * (which handles transactional alerts) because outreach has different
  * sender domain, suppression-check, and CAN-SPAM requirements.
+ *
+ * Uses a SEPARATE Resend key (OUTREACH_RESEND_API_KEY) from the
+ * transactional path (RESEND_API_KEY) so cold outreach can never route
+ * through the transactional account — any deliverability or reputation
+ * hit on cold sending stays isolated from account/transactional mail.
  *
  * Default FROM domain is outreach.vitroslabs.com so any deliverability hit
  * is isolated from the primary domain.
@@ -44,7 +49,7 @@ interface OutreachResult {
  */
 export async function sendOutreach(opts: OutreachOptions): Promise<OutreachResult> {
   if (!resend) {
-    console.warn("[Outreach] RESEND_API_KEY not configured");
+    console.warn("[Outreach] OUTREACH_RESEND_API_KEY not configured");
     return { ok: false, skipped: "no_api_key" };
   }
 
