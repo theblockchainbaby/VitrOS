@@ -202,7 +202,7 @@ const HOMEPAGE_CSS = `
 }
 
 .lp-root .scale {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: var(--rule-hair) solid var(--color-rule-soft);
   background: var(--color-paper);
 }
@@ -844,10 +844,6 @@ export function LandingPage() {
 
           <section className="scale" aria-label="Scale">
             <div className="scale__cell">
-              <div className="scale__n tnum">4,159</div>
-              <div className="scale__l">Vessels tracked in production</div>
-            </div>
-            <div className="scale__cell">
               <div className="scale__n tnum">80%</div>
               <div className="scale__l">Reduction in logging time</div>
             </div>
@@ -885,48 +881,6 @@ export function LandingPage() {
                   <p className="pcard__text">Nobody can answer &ldquo;what ships next week&rdquo; without walking the lab. Demand forecasting is a guess. Customer commitments are a leap of faith.</p>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section className="anchor" id="rascal">
-            <div className="anchor__inner">
-              <div className="anchor__copy">
-                <p className="anchor__kicker">Running in production today</p>
-                <h2 className="anchor__title">Rascal Seed Research Laboratories.</h2>
-                <p className="anchor__text">Rascal runs the entire micropropagation pipeline on VitrOS. Every vessel logged in three seconds. Every clone line traced to its mother. Every contamination event routed before the shelf neighbour goes down.</p>
-                <dl className="anchor__meta">
-                  <div>
-                    <dt>Customer</dt>
-                    <dd>Rascal Seed Research Labs</dd>
-                  </div>
-                  <div>
-                    <dt>Location</dt>
-                    <dd>South Africa</dd>
-                  </div>
-                  <div>
-                    <dt>Vessels tracked</dt>
-                    <dd>4,159 active</dd>
-                  </div>
-                  <div>
-                    <dt>Live since</dt>
-                    <dd>2026</dd>
-                  </div>
-                </dl>
-              </div>
-              <figure className="anchor__figure">
-                <div className="anchor__img-wrap">
-                  <Image
-                    src="/images/homepage/tc-rascal.jpg"
-                    alt="A tissue culture technician in PPE working at an Airtech laminar flow hood, transferring plantlets between sterile jars."
-                    fill
-                    sizes="(max-width: 56rem) 100vw, 60vw"
-                  />
-                </div>
-                <figcaption className="anchor__cap">
-                  <span>Plate 02 &nbsp;·&nbsp; Sterile transfer, Rascal Seed Research Labs</span>
-                  <span>Cultivar TC-04 &nbsp;·&nbsp; Multiplication stage</span>
-                </figcaption>
-              </figure>
             </div>
           </section>
 
