@@ -3,68 +3,149 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Camera, Keyboard } from "lucide-react";
+import { Camera, Keyboard, Zap, ZapOff } from "lucide-react";
+import type { IScannerControls } from "@zxing/browser";
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
   placeholder?: string;
 }
 
+// Formats we print on labels (Code128) plus common extras
+const NATIVE_FORMATS = ["code_128", "code_39", "ean_13", "ean_8", "qr_code", "data_matrix"];
+
+type BarcodeDetectorLike = {
+  detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>;
+};
+type BarcodeDetectorCtor = {
+  new (opts: { formats: string[] }): BarcodeDetectorLike;
+  getSupportedFormats?: () => Promise<string[]>;
+};
+
 export function BarcodeScanner({ onScan, placeholder = "Scan or type barcode..." }: BarcodeScannerProps) {
   const [manualCode, setManualCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"camera" | "manual">("manual");
+  const [mode, setMode] = useState<"camera" | "manual">("camera");
+  const [torchAvailable, setTorchAvailable] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [zoomCaps, setZoomCaps] = useState<{ min: number; max: number; step: number } | null>(null);
+  const [zoom, setZoom] = useState(1);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   const animFrameRef = useRef<number>(0);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const zxingControlsRef = useRef<IScannerControls | null>(null);
+  const detectedRef = useRef(false);
 
   const stopCamera = useCallback(() => {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = 0;
     }
+    if (zxingControlsRef.current) {
+      try {
+        zxingControlsRef.current.stop();
+      } catch {
+        /* already stopped */
+      }
+      zxingControlsRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
+    trackRef.current = null;
+    setTorchAvailable(false);
+    setTorchOn(false);
+    setZoomCaps(null);
     setScanning(false);
   }, []);
 
+  const handleDetected = useCallback(
+    (code: string) => {
+      if (detectedRef.current || !code) return;
+      detectedRef.current = true;
+      try {
+        navigator.vibrate?.(80);
+      } catch {
+        /* not supported */
+      }
+      stopCamera();
+      onScan(code);
+    },
+    [onScan, stopCamera]
+  );
+
   const startCamera = useCallback(async () => {
+    if (streamRef.current) return; // already running
     setError(null);
+    detectedRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
       });
       streamRef.current = stream;
+      const track = stream.getVideoTracks()[0];
+      trackRef.current = track;
+
+      // Continuous autofocus where the camera supports it (small dense labels need it).
+      // Unknown constraints are ignored by browsers that don't support them.
+      try {
+        await track.applyConstraints({
+          advanced: [{ focusMode: "continuous" } as unknown as MediaTrackConstraintSet],
+        });
+      } catch {
+        /* fixed-focus camera */
+      }
+
+      // Probe torch + zoom so we can offer them in the UI
+      const caps = (track.getCapabilities?.() ?? {}) as {
+        torch?: boolean;
+        zoom?: { min?: number; max?: number; step?: number };
+      };
+      if (caps.torch) setTorchAvailable(true);
+      if (caps.zoom && typeof caps.zoom.max === "number") {
+        const min = caps.zoom.min ?? 1;
+        setZoomCaps({ min, max: caps.zoom.max, step: caps.zoom.step ?? 0.1 });
+        setZoom(min);
+      }
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-
       setScanning(true);
 
-      // Use BarcodeDetector API if available (Safari/iOS 16.4+, Chrome)
-      const win = window as unknown as { BarcodeDetector?: new (opts: { formats: string[] }) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } };
+      // Engine selection: native BarcodeDetector only when it actually decodes
+      // our printed format (Code128). iOS/WebKit has no BarcodeDetector, and some
+      // implementations only do QR — those all fall through to ZXing, which
+      // decodes 1D barcodes from the live stream on every platform.
+      const win = window as unknown as { BarcodeDetector?: BarcodeDetectorCtor };
+      let useNative = false;
       if (win.BarcodeDetector) {
-        const detector = new win.BarcodeDetector({
-          formats: ["code_128", "code_39", "ean_13", "ean_8", "qr_code", "data_matrix"],
-        });
+        try {
+          const supported = (await win.BarcodeDetector.getSupportedFormats?.()) ?? [];
+          useNative = supported.includes("code_128");
+        } catch {
+          useNative = false;
+        }
+      }
 
+      if (useNative) {
+        const detector = new win.BarcodeDetector!({ formats: NATIVE_FORMATS });
         const scan = async () => {
           if (!videoRef.current || !streamRef.current) return;
           try {
             const barcodes = await detector.detect(videoRef.current);
-            if (barcodes.length > 0) {
-              const code = barcodes[0].rawValue;
-              if (code) {
-                onScan(code);
-                stopCamera();
-                return;
-              }
+            if (barcodes.length > 0 && barcodes[0].rawValue) {
+              handleDetected(barcodes[0].rawValue);
+              return;
             }
           } catch {
             // frame not ready yet
@@ -73,58 +154,90 @@ export function BarcodeScanner({ onScan, placeholder = "Scan or type barcode..."
         };
         animFrameRef.current = requestAnimationFrame(scan);
       } else {
-        // Fallback: use html5-qrcode for devices without BarcodeDetector
-        try {
-          const { Html5Qrcode } = await import("html5-qrcode");
-          const qrScanner = new Html5Qrcode("barcode-fallback-reader", false);
-
-          if (!canvasRef.current) {
-            canvasRef.current = document.createElement("canvas");
+        const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([
+          import("@zxing/browser"),
+          import("@zxing/library"),
+        ]);
+        const hints = new Map();
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+          BarcodeFormat.CODE_128,
+          BarcodeFormat.CODE_39,
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.QR_CODE,
+          BarcodeFormat.DATA_MATRIX,
+        ]);
+        hints.set(DecodeHintType.TRY_HARDER, true);
+        const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 100 });
+        if (!videoRef.current || !streamRef.current) return; // unmounted while loading
+        zxingControlsRef.current = await reader.decodeFromStream(
+          stream,
+          videoRef.current,
+          (result) => {
+            if (result) handleDetected(result.getText());
           }
-
-          const scanFrame = async () => {
-            if (!videoRef.current || !streamRef.current) return;
-            const video = videoRef.current;
-            const canvas = canvasRef.current!;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-              ctx.drawImage(video, 0, 0);
-              try {
-                const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.8));
-                const file = new File([blob], "frame.jpg", { type: "image/jpeg" });
-                const result = await qrScanner.scanFileV2(file, false);
-                if (result?.decodedText) {
-                  onScan(result.decodedText);
-                  stopCamera();
-                  return;
-                }
-              } catch {
-                // no barcode in this frame
-              }
-            }
-            // Scan every 500ms to save CPU
-            setTimeout(() => {
-              animFrameRef.current = requestAnimationFrame(scanFrame);
-            }, 500);
-          };
-          animFrameRef.current = requestAnimationFrame(scanFrame);
-        } catch {
-          setError("Barcode scanning library failed to load. Use manual entry below.");
-        }
+        );
       }
     } catch (err) {
       console.error("Camera error:", err);
-      setError("Camera access denied. Please allow camera permissions in your browser settings, then try again.");
+      stopCamera();
+      const name = err instanceof DOMException ? err.name : "";
+      if (name === "NotAllowedError") {
+        setError("Camera access denied. Allow camera permissions in your browser settings, then try again.");
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        setError("No camera found on this device. Use manual entry below.");
+      } else {
+        setError("Could not start the camera. Use manual entry below.");
+      }
     }
-  }, [onScan, stopCamera]);
+  }, [handleDetected, stopCamera]);
+
+  // If camera permission was already granted (returning user), start instantly.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await navigator.permissions?.query?.({ name: "camera" as PermissionName });
+        if (!cancelled && status?.state === "granted") startCamera();
+      } catch {
+        /* Permissions API unavailable — wait for the tap */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [startCamera]);
 
   useEffect(() => {
     return () => {
       stopCamera();
     };
   }, [stopCamera]);
+
+  const toggleTorch = async () => {
+    const track = trackRef.current;
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: next } as unknown as MediaTrackConstraintSet],
+      });
+      setTorchOn(next);
+    } catch {
+      /* torch not available after all */
+    }
+  };
+
+  const applyZoom = async (value: number) => {
+    setZoom(value);
+    try {
+      await trackRef.current?.applyConstraints({
+        advanced: [{ zoom: value } as unknown as MediaTrackConstraintSet],
+      });
+    } catch {
+      /* zoom not applicable */
+    }
+  };
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,9 +280,19 @@ export function BarcodeScanner({ onScan, placeholder = "Scan or type barcode..."
               className="w-full h-full object-cover"
             />
             {scanning && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-64 h-24 border-2 border-primary rounded-lg" />
-              </div>
+              <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 h-24 rounded-lg border-2 border-primary pointer-events-none" />
+            )}
+            {scanning && torchAvailable && (
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                onClick={toggleTorch}
+                className="absolute top-2 right-2"
+                aria-label={torchOn ? "Turn light off" : "Turn light on"}
+              >
+                {torchOn ? <ZapOff className="size-4" /> : <Zap className="size-4" />}
+              </Button>
             )}
             {!scanning && !error && (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -180,23 +303,35 @@ export function BarcodeScanner({ onScan, placeholder = "Scan or type barcode..."
               </div>
             )}
           </div>
+          {scanning && zoomCaps && (
+            <input
+              type="range"
+              min={zoomCaps.min}
+              max={zoomCaps.max}
+              step={zoomCaps.step}
+              value={zoom}
+              onChange={(e) => applyZoom(Number(e.target.value))}
+              className="w-full accent-primary"
+              aria-label="Camera zoom"
+            />
+          )}
           {scanning && (
             <p className="text-sm text-muted-foreground text-center">
-              Point your camera at a barcode
+              Hold the barcode steady about 4-6 inches away. Use the light if it&apos;s dim.
             </p>
           )}
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
-              {error}
+            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg space-y-2">
+              <p>{error}</p>
+              <Button variant="outline" size="sm" onClick={startCamera}>
+                Try Again
+              </Button>
             </div>
           )}
         </div>
       )}
 
-      {/* Hidden element for html5-qrcode fallback */}
-      <div id="barcode-fallback-reader" className="hidden" />
-
-      {/* Manual entry — always available */}
+      {/* Manual entry — always available (also catches USB/keyboard-wedge scanners) */}
       <form onSubmit={handleManualSubmit} className="flex gap-2">
         <Input
           value={manualCode}
