@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 // VitrOS homepage — Variant H (photo-led, dark Anduril school, real customer photos)
 // Origin: /Users/york/Documents/VitrOS_Homepage_Redesign_Brief_20260605/variant_H_photo_led.html
@@ -74,6 +74,43 @@ const HOMEPAGE_CSS = `
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
 }
+
+.lp-root[data-theme="light"] {
+  --color-paper:       oklch(98.6% 0.004 240);
+  --color-paper-2:     oklch(96.8% 0.005 240);
+  --color-paper-3:     oklch(94%   0.006 240);
+  --color-rule:        oklch(88%   0.007 240);
+  --color-rule-soft:   oklch(92%   0.005 240);
+  --color-ink:         oklch(24%   0.014 260);
+  --color-ink-2:       oklch(42%   0.013 260);
+  --color-muted:       oklch(52%   0.012 260);
+  --color-faint:       oklch(62%   0.010 260);
+  --color-accent:      oklch(52%   0.15  148);
+  --color-accent-ink:  oklch(99%   0.01  148);
+  --color-signal-ok:   oklch(52%   0.15  148);
+  --color-signal-warn: oklch(62%   0.14  70);
+  --color-signal-bad:  oklch(55%   0.19  27);
+  --color-cyan:        oklch(52%   0.11  225);
+  --color-focus:       oklch(52%   0.17  148);
+}
+
+.lp-root .nav__theme {
+  display: grid;
+  place-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--color-ink-2);
+  background: transparent;
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out);
+}
+.lp-root .nav__theme:hover { color: var(--color-accent); border-color: var(--color-accent); }
+.lp-root .nav__theme:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.lp-root .nav__theme svg { width: 17px; height: 17px; display: block; }
+
 .lp-root *, .lp-root *::before, .lp-root *::after { box-sizing: border-box; }
 .lp-root a { color: inherit; text-decoration: none; }
 .lp-root img { display: block; max-width: 100%; }
@@ -243,19 +280,32 @@ const HOMEPAGE_CSS = `
 .lp-root .pain__lede { font-size: var(--text-md); line-height: 1.55; color: var(--color-ink-2); max-width: 52ch; }
 .lp-root .pain__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-md); }
 .lp-root .pcard {
-  padding: var(--space-lg);
   background: var(--color-paper-2);
   border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex; flex-direction: column;
 }
-.lp-root .pcard__mark {
-  width: 32px; height: 32px; display: grid; place-content: center;
-  background: color-mix(in oklch, var(--color-signal-bad) 20%, transparent);
-  color: var(--color-signal-bad);
-  font-family: var(--font-mono); font-size: var(--text-md);
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--space-md);
+.lp-root .pcard__media { position: relative; aspect-ratio: 16 / 10; overflow: hidden; }
+.lp-root .pcard__media img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: saturate(0.9) contrast(1.02);
 }
+.lp-root .pcard__media::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 55%, color-mix(in oklch, var(--color-paper-2) 92%, transparent) 100%),
+    linear-gradient(to top, color-mix(in oklch, var(--color-signal-bad) 12%, transparent), transparent 40%);
+}
+.lp-root .pcard__tag {
+  position: absolute; left: var(--space-md); top: var(--space-md); z-index: 2;
+  font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--color-signal-bad);
+  background: color-mix(in oklch, var(--color-paper) 55%, transparent);
+  border: 1px solid color-mix(in oklch, var(--color-signal-bad) 45%, transparent);
+  padding: 3px 8px; border-radius: 4px; backdrop-filter: blur(6px);
+}
+.lp-root .pcard__body { padding: var(--space-lg); padding-top: var(--space-md); }
 .lp-root .pcard__title {
   font-family: var(--font-display); font-size: var(--text-md); font-weight: 600;
   letter-spacing: -0.018em; color: var(--color-ink); margin-bottom: var(--space-sm);
@@ -789,6 +839,21 @@ export function LandingPage() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  useEffect(() => {
+    const saved = window.localStorage.getItem("vitros-theme");
+    if (saved === "light" || saved === "dark") setTheme(saved);
+  }, []);
+  const toggleTheme = () => {
+    setTheme((t) => {
+      const next = t === "dark" ? "light" : "dark";
+      try {
+        window.localStorage.setItem("vitros-theme", next);
+      } catch {}
+      return next;
+    });
+  };
+
   let nextId = 1841;
   const shelfRows = SHELF_STATE.map((row, ri) =>
     row.map((s, ci) => {
@@ -800,13 +865,30 @@ export function LandingPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: HOMEPAGE_CSS }} />
-      <div className="lp-root">
+      <div className="lp-root" data-theme={theme}>
 
         <nav id="lp-nav" className="nav" aria-label="Primary">
           <Link className="nav__brand" href="/" aria-label="VitrOS home">
             <img className="nav__brand-mark" src="/logo.png" alt="VitrOS" />
           </Link>
           <div className="nav__right">
+            <button
+              type="button"
+              className="nav__theme"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                </svg>
+              )}
+            </button>
             <Link className="nav__link" href="/features">Features</Link>
             <Link className="nav__link" href="/pricing">Pricing</Link>
             <Link className="nav__link" href="/demo">Demo</Link>
@@ -866,19 +948,34 @@ export function LandingPage() {
               </div>
               <div className="pain__grid">
                 <div className="pcard">
-                  <div className="pcard__mark" aria-hidden="true">!</div>
-                  <h3 className="pcard__title">Paper &amp; spreadsheet chaos.</h3>
-                  <p className="pcard__text">A new vessel takes 15 seconds to log by hand. A new clone line spawns a tab nobody opens again. The audit trail lives in someone&rsquo;s memory.</p>
+                  <div className="pcard__media">
+                    <span className="pcard__tag">The problem</span>
+                    <Image src="/images/homepage/pain-01.webp" alt="Gloved hands logging cultures in a paper logbook beside a laptop spreadsheet" fill sizes="(max-width: 56rem) 100vw, 33vw" />
+                  </div>
+                  <div className="pcard__body">
+                    <h3 className="pcard__title">Paper &amp; spreadsheet chaos.</h3>
+                    <p className="pcard__text">A new vessel takes 15 seconds to log by hand. A new clone line spawns a tab nobody opens again. The audit trail lives in someone&rsquo;s memory.</p>
+                  </div>
                 </div>
                 <div className="pcard">
-                  <div className="pcard__mark" aria-hidden="true">!</div>
-                  <h3 className="pcard__title">Contamination blind spots.</h3>
-                  <p className="pcard__text">A contamination event spreads across a shelf before anyone notices the pattern. By the time the trend shows up in the weekly review, the line is already lost.</p>
+                  <div className="pcard__media">
+                    <span className="pcard__tag">The problem</span>
+                    <Image src="/images/homepage/pain-02.webp" alt="A technician holding a culture tube up to the light to inspect it for contamination" fill sizes="(max-width: 56rem) 100vw, 33vw" />
+                  </div>
+                  <div className="pcard__body">
+                    <h3 className="pcard__title">Contamination blind spots.</h3>
+                    <p className="pcard__text">A contamination event spreads across a shelf before anyone notices the pattern. By the time the trend shows up in the weekly review, the line is already lost.</p>
+                  </div>
                 </div>
                 <div className="pcard">
-                  <div className="pcard__mark" aria-hidden="true">!</div>
-                  <h3 className="pcard__title">Zero production visibility.</h3>
-                  <p className="pcard__text">Nobody can answer &ldquo;what ships next week&rdquo; without walking the lab. Demand forecasting is a guess. Customer commitments are a leap of faith.</p>
+                  <div className="pcard__media">
+                    <span className="pcard__tag">The problem</span>
+                    <Image src="/images/homepage/pain-03.webp" alt="A lab worker walking down an aisle of tissue culture shelves" fill sizes="(max-width: 56rem) 100vw, 33vw" />
+                  </div>
+                  <div className="pcard__body">
+                    <h3 className="pcard__title">Zero production visibility.</h3>
+                    <p className="pcard__text">Nobody can answer &ldquo;what ships next week&rdquo; without walking the lab. Demand forecasting is a guess. Customer commitments are a leap of faith.</p>
+                  </div>
                 </div>
               </div>
             </div>
