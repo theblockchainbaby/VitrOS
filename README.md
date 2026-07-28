@@ -5,14 +5,11 @@
 VitrOS replaces the spreadsheets and paper logs that most tissue-culture labs still run on. Labs tracking tens of thousands of vessels through subculture cycles use it to keep genealogy, contamination history, and batch context intact — at scan speed.
 
 > 🔗 **Website:** [vitroslabs.com](https://vitroslabs.com)
-> 🔗 **App:** [app.vitroslabs.com](#) <!-- TODO: point the app at a vitroslabs.com subdomain — the app-psi-six-95.vercel.app URL undermines credibility. In Vercel: Project Settings → Domains → add app.vitroslabs.com -->
-> 🎥 **2-min walkthrough:** [video link](#) <!-- TODO: reuse the VitrOS walkthrough video from your Apr 16 investor update -->
+> 🔗 **Live app:** [app-psi-six-95.vercel.app](https://app-psi-six-95.vercel.app)
 
-![VitrOS dashboard](docs/screenshots/dashboard.png)
 <img width="1494" height="816" alt="Screenshot 2026-06-09 at 5 38 08 PM" src="https://github.com/user-attachments/assets/4d96a4cf-064e-4a60-a4f1-464518eb69e5" />
 <img width="1493" height="814" alt="Screenshot 2026-06-09 at 5 39 16 PM" src="https://github.com/user-attachments/assets/44edf7f9-f488-4094-873d-00006afbec79" />
 <img width="1496" height="814" alt="Screenshot 2026-06-09 at 5 43 58 PM" src="https://github.com/user-attachments/assets/6e52d370-8acc-40da-9e4d-371dd55def0f" />
-<!-- TODO: add 2-3 screenshots: dashboard, vessel genealogy view, contamination trace. Visual proof is the highest-ROI 20 minutes you can spend on this repo. -->
 
 ## Why it exists
 
@@ -30,9 +27,18 @@ A mid-size propagation lab moves thousands of vessels a week. One untraced conta
 
 Next.js · React · TypeScript · Prisma · PostgreSQL (Neon) · Sentry · Vitest · Vercel
 
+## Run locally
+
+```bash
+npm install
+cp .env.example .env.local   # set DATABASE_URL and the other values
+npx prisma generate
+npm run dev                  # http://localhost:3000
+```
+
 ## Status
 
-In production development under Endless BioTech. Built from an empty repo to a working multitenant platform and demoed directly with laboratory directors. <!-- TODO: if any lab is actively piloting/paying, say so here in one sentence — it's the strongest line in the file -->
+In production development under Endless BioTech. Built from an empty repo to a working multitenant platform and demoed directly with laboratory directors.
 
 ## Author
 
