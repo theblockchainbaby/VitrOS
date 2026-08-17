@@ -21,6 +21,7 @@ function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedPlan = searchParams.get("plan");
+  const billingInterval = searchParams.get("interval") === "annual" ? "annual" : "monthly";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -74,6 +75,7 @@ function SignupForm() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               plan: selectedPlan,
+              interval: billingInterval,
             }),
           });
           const checkoutData = await checkoutRes.json();

@@ -21,6 +21,7 @@ const PLANS = [
     key: "solo",
     name: "Solo",
     price: 49,
+    priceAnnual: 490,
     maxVessels: "500",
     maxMembers: "1",
     features: [
@@ -36,6 +37,7 @@ const PLANS = [
     key: "growth",
     name: "Growth",
     price: 99,
+    priceAnnual: 990,
     maxVessels: "5,000",
     maxMembers: "5",
     popular: true,
@@ -53,6 +55,7 @@ const PLANS = [
     key: "pro",
     name: "Pro",
     price: 199,
+    priceAnnual: 1990,
     maxVessels: "Unlimited",
     maxMembers: "Unlimited",
     features: [
@@ -69,6 +72,7 @@ const PLANS = [
     key: "enterprise",
     name: "Enterprise",
     price: 2499,
+    priceAnnual: 0,
     maxVessels: "Unlimited",
     maxMembers: "Unlimited",
     features: [
@@ -162,6 +166,7 @@ function BillingContent() {
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [annual, setAnnual] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("success")) toast.success("Subscription activated!");
@@ -183,7 +188,7 @@ function BillingContent() {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, interval: annual ? "annual" : "monthly" }),
       });
       const data = await res.json();
       if (data.url) {
@@ -323,9 +328,32 @@ function BillingContent() {
 
       {/* Plan cards */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">
-          {status.hasSubscription ? "Change Plan" : "Choose a Plan"}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg font-semibold">
+            {status.hasSubscription ? "Change Plan" : "Choose a Plan"}
+          </h2>
+          <div className="inline-flex items-center rounded-lg border p-1 text-sm">
+            <button
+              type="button"
+              onClick={() => setAnnual(false)}
+              className={`px-3 py-1 rounded-md transition-colors ${
+                !annual ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnnual(true)}
+              className={`px-3 py-1 rounded-md transition-colors ${
+                annual ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+              }`}
+            >
+              Annual
+              <span className="ml-1 text-xs opacity-80">2 months free</span>
+            </button>
+          </div>
+        </div>
         <div className="grid md:grid-cols-3 gap-4">
           {PLANS.map((plan) => {
             const isCurrent = status.plan === plan.key;
@@ -351,9 +379,9 @@ function BillingContent() {
                     ) : (
                       <>
                         <span className="text-3xl font-bold">
-                          ${plan.price.toLocaleString()}
+                          ${annual ? plan.priceAnnual.toLocaleString() : plan.price.toLocaleString()}
                         </span>
-                        <span className="text-muted-foreground">/mo</span>
+                        <span className="text-muted-foreground">{annual ? "/yr" : "/mo"}</span>
                       </>
                     )}
                   </div>

@@ -27,6 +27,7 @@ const PLANS = [
   {
     name: "Solo",
     price: 49,
+    priceAnnual: 490,
     contactUs: false,
     description: "For single-bench labs, hobbyists, and small startups",
     features: [
@@ -42,6 +43,7 @@ const PLANS = [
   {
     name: "Growth",
     price: 99,
+    priceAnnual: 990,
     contactUs: false,
     description: "For mid-size operations scaling production",
     popular: true,
@@ -61,6 +63,7 @@ const PLANS = [
   {
     name: "Pro",
     price: 199,
+    priceAnnual: 1990,
     contactUs: false,
     description: "For serious operations needing full lab management",
     features: [
@@ -79,6 +82,7 @@ const PLANS = [
   {
     name: "Enterprise",
     price: null,
+    priceAnnual: null,
     contactUs: true,
     description: "For large-scale operations with custom needs",
     features: [
@@ -117,7 +121,13 @@ const FAQ = [
   },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ billing?: string }>;
+}) {
+  const { billing } = await searchParams;
+  const annual = billing === "annual";
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
@@ -152,6 +162,30 @@ export default function PricingPage() {
 
       {/* Pricing Cards */}
       <section className="pb-16 md:pb-24 px-4">
+        {/* Billing interval toggle */}
+        <div className="flex justify-center mb-10">
+          <div className="inline-flex items-center rounded-lg border p-1 text-sm">
+            <Link
+              href="/pricing"
+              scroll={false}
+              className={`px-4 py-1.5 rounded-md transition-colors ${
+                !annual ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+              }`}
+            >
+              Monthly
+            </Link>
+            <Link
+              href="/pricing?billing=annual"
+              scroll={false}
+              className={`px-4 py-1.5 rounded-md transition-colors ${
+                annual ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+              }`}
+            >
+              Annual
+              <span className="ml-1.5 text-xs opacity-80">2 months free</span>
+            </Link>
+          </div>
+        </div>
         {/* Main 4 plans */}
         <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-5">
           {PLANS.map((plan) => (
@@ -173,8 +207,10 @@ export default function PricingPage() {
                   <span className="text-2xl font-bold text-muted-foreground">Contact Us</span>
                 ) : (
                   <>
-                    <span className="text-3xl font-bold">${plan.price!.toLocaleString()}</span>
-                    <span className="text-muted-foreground">/mo</span>
+                    <span className="text-3xl font-bold">
+                      ${(annual ? plan.priceAnnual! : plan.price!).toLocaleString()}
+                    </span>
+                    <span className="text-muted-foreground">{annual ? "/yr" : "/mo"}</span>
                   </>
                 )}
               </div>
@@ -194,7 +230,7 @@ export default function PricingPage() {
                     </Button>
                   </a>
                 ) : (
-                  <Link href={`/signup?plan=${plan.name.toLowerCase()}`}>
+                  <Link href={`/signup?plan=${plan.name.toLowerCase()}&interval=${annual ? "annual" : "monthly"}`}>
                     <Button className="w-full" variant={plan.popular ? "default" : "outline"}>
                       Start Free Trial
                     </Button>
