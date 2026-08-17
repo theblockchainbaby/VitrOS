@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 export const metadata: Metadata = {
   title: "Pricing | VitrOS Lab Management Software",
   description:
-    "Simple, scalable pricing for tissue culture labs. Start from $99/mo with vessel tracking, barcode scanning, dashboards, and more. Try VitrOS today.",
+    "Simple, scalable pricing for tissue culture labs. Start from $49/mo with vessel tracking, barcode scanning, dashboards, and more. Try VitrOS today.",
   keywords: [
     "lab workflow software",
     "tissue tracking software",
@@ -19,14 +19,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Pricing | VitrOS Lab Management Software",
     description:
-      "Simple, scalable pricing for tissue culture labs. Start from $99/mo with vessel tracking, barcode scanning, dashboards, and more.",
+      "Simple, scalable pricing for tissue culture labs. Start from $49/mo with vessel tracking, barcode scanning, dashboards, and more.",
   },
 };
 
 const PLANS = [
   {
     name: "Solo",
-    price: 99,
+    price: 49,
     contactUs: false,
     description: "For single-bench labs, hobbyists, and small startups",
     features: [
@@ -41,7 +41,7 @@ const PLANS = [
   },
   {
     name: "Growth",
-    price: 299,
+    price: 99,
     contactUs: false,
     description: "For mid-size operations scaling production",
     popular: true,
@@ -60,7 +60,7 @@ const PLANS = [
   },
   {
     name: "Pro",
-    price: 799,
+    price: 199,
     contactUs: false,
     description: "For serious operations needing full lab management",
     features: [
@@ -92,29 +92,12 @@ const PLANS = [
       "White-glove onboarding",
     ],
   },
-  {
-    name: "Government & University",
-    price: 299,
-    contactUs: false,
-    govTier: true,
-    description: "Special pricing for government agencies and academic institutions",
-    features: [
-      "Up to 10 users, 3 locations",
-      "Up to 10,000 active vessels",
-      "All Pro features included",
-      "Audit trail & compliance logging",
-      "Clone line traceability for germplasm",
-      "Pathogen test documentation",
-      "Annual billing available",
-      "Email & priority support",
-    ],
-  },
 ];
 
 const FAQ = [
   {
     q: "Is there a free trial?",
-    a: "Yes — every plan comes with a 30-day free trial. No credit card required to start.",
+    a: "Yes, every plan comes with a 30-day free trial. No credit card required to start.",
   },
   {
     q: "Can I switch plans later?",
@@ -126,15 +109,11 @@ const FAQ = [
   },
   {
     q: "Do you offer discounts for annual billing?",
-    a: "Yes — pay annually and get 2 months free on any plan. That means Solo is just $990/year, Growth is $2,990/year, and Pro is $7,990/year.",
+    a: "Yes. Pay annually and get 2 months free on any plan. That means Solo is just $490/year, Growth is $990/year, and Pro is $1,990/year.",
   },
   {
     q: "What if I need more vessels but not Enterprise features?",
     a: "Pro gives you unlimited vessels and users. If you need custom integrations or dedicated support on top of that, Enterprise is the way to go.",
-  },
-  {
-    q: "Do you offer government or university pricing?",
-    a: "Yes. Our Government & University tier is $299/mo and includes all Pro features with audit trail and compliance logging. Annual billing comes to $3,588/year, well under most institutional procurement thresholds.",
   },
 ];
 
@@ -166,7 +145,7 @@ export default function PricingPage() {
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Lab workflow software that grows with your operation. Every plan includes vessel tracking,
-            barcode scanning, and real-time dashboards. Start from $99/mo. Pay annually and get 2 months free.
+            barcode scanning, and real-time dashboards. Start from $49/mo. Pay annually and get 2 months free.
           </p>
         </div>
       </section>
@@ -175,7 +154,7 @@ export default function PricingPage() {
       <section className="pb-16 md:pb-24 px-4">
         {/* Main 4 plans */}
         <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-5">
-          {PLANS.filter((p) => !(p as any).govTier).map((plan) => (
+          {PLANS.map((plan) => (
             <div
               key={plan.name}
               className={`rounded-xl border bg-background p-6 flex flex-col ${
@@ -226,67 +205,6 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Government & University tier */}
-        <div className="max-w-3xl mx-auto mt-10">
-          {PLANS.filter((p) => (p as any).govTier).map((plan) => (
-            <div
-              key={plan.name}
-              className="rounded-xl border-2 border-blue-500/30 bg-blue-500/5 p-8 relative"
-            >
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4">
-                Government & Academic
-              </Badge>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-1">{plan.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
-                  <ul className="space-y-2">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="text-center md:text-right shrink-0">
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold">${plan.price!.toLocaleString()}</span>
-                    <span className="text-muted-foreground">/mo</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    $3,588/yr with annual billing. Under $25K procurement threshold.
-                  </p>
-                  <a href="mailto:support@vitroslabs.com?subject=Government%20%2F%20University%20Inquiry">
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                      Request Access
-                    </Button>
-                  </a>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Founding Partner */}
-      <section className="pb-16 md:pb-24 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="relative rounded-xl border-2 border-primary/30 bg-primary/5 p-6 text-center">
-            <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4">
-              Limited — 1 spot remaining
-            </Badge>
-            <h3 className="text-xl font-bold mt-1 mb-2">Founding Partner Program</h3>
-            <p className="text-muted-foreground text-sm mb-3">
-              Be one of our first 3 customers and lock in{" "}
-              <span className="font-bold text-foreground">$99/mo for the first 3 months, no matter which plan you choose.</span>{" "}
-              In exchange, we ask for a short case study and testimonial.
-            </p>
-            <Link href="/signup?plan=starter&founding=true">
-              <Button>Claim Founding Partner Rate <ArrowRight className="h-4 w-4 ml-1" /></Button>
-            </Link>
-          </div>
-        </div>
       </section>
 
       {/* FAQ */}

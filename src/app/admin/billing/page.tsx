@@ -20,12 +20,12 @@ const PLANS = [
   {
     key: "solo",
     name: "Solo",
-    price: 99,
+    price: 49,
     maxVessels: "500",
     maxMembers: "1",
     features: [
       "Up to 500 active vessels",
-      "1 user",
+      "1 user, 1 location",
       "Barcode scanning",
       "Batch operations",
       "Cultivar tracking",
@@ -35,13 +35,13 @@ const PLANS = [
   {
     key: "growth",
     name: "Growth",
-    price: 299,
-    maxVessels: "Unlimited",
+    price: 99,
+    maxVessels: "5,000",
     maxMembers: "5",
     popular: true,
     features: [
-      "Unlimited vessels",
-      "Up to 5 users",
+      "Up to 5,000 active vessels",
+      "Up to 5 users, 3 locations",
       "Full analytics & forecasting",
       "Contamination tracking",
       "Clone line management",
@@ -52,12 +52,12 @@ const PLANS = [
   {
     key: "pro",
     name: "Pro",
-    price: 799,
+    price: 199,
     maxVessels: "Unlimited",
-    maxMembers: "15",
+    maxMembers: "Unlimited",
     features: [
       "Unlimited vessels",
-      "Up to 15 users",
+      "Unlimited users & locations",
       "AI Lab Assistant",
       "Team performance tracking",
       "Production forecasting",
@@ -346,10 +346,16 @@ function BillingContent() {
                 <CardContent className="pt-6">
                   <h3 className="font-bold text-lg">{plan.name}</h3>
                   <div className="mt-2 mb-4">
-                    <span className="text-3xl font-bold">
-                      ${plan.price.toLocaleString()}
-                    </span>
-                    <span className="text-muted-foreground">/mo</span>
+                    {plan.key === "enterprise" ? (
+                      <span className="text-3xl font-bold">Contact</span>
+                    ) : (
+                      <>
+                        <span className="text-3xl font-bold">
+                          ${plan.price.toLocaleString()}
+                        </span>
+                        <span className="text-muted-foreground">/mo</span>
+                      </>
+                    )}
                   </div>
                   <ul className="space-y-2 mb-6">
                     {plan.features.map((f) => (
@@ -362,7 +368,16 @@ function BillingContent() {
                       </li>
                     ))}
                   </ul>
-                  {isCurrent ? (
+                  {plan.key === "enterprise" ? (
+                    <a
+                      href="mailto:support@vitroslabs.com?subject=Enterprise%20inquiry"
+                      className="block"
+                    >
+                      <Button className="w-full" variant="outline">
+                        Contact Sales
+                      </Button>
+                    </a>
+                  ) : isCurrent ? (
                     <Button className="w-full" variant="outline" disabled>
                       Current Plan
                     </Button>
