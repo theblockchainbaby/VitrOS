@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, handleApiError, ApiError } from "@/lib/api-helpers";
-import { stripe, PLAN_CONFIG, PlanName } from "@/lib/stripe";
+import { stripe, PlanName, resolvePriceId } from "@/lib/stripe";
 import { z } from "zod";
 
 const checkoutSchema = z.object({
   plan: z.enum(["solo", "growth", "pro", "enterprise"]),
+  interval: z.enum(["monthly", "annual"]).default("monthly"),
   coupon: z.string().optional(),
 });
 
@@ -13,16 +14,19 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
     const body = await req.json();
-    const { plan, coupon } = checkoutSchema.parse(body);
+    const { plan, interval, coupon } = checkoutSchema.parse(body);
 
     const org = await prisma.organization.findUnique({
       where: { id: user.organizationId },
     });
     if (!org) throw new ApiError("Organization not found", 404);
 
-    const planConfig = PLAN_CONFIG[plan as PlanName];
-    if (!planConfig?.priceId) {
-      throw new ApiError("Stripe price not configured for this plan. Contact support.", 400);
+    const priceId = resolvePriceId(plan as PlanName, interval);
+    if (!priceId) {
+      throw new ApiError(
+        `Stripe ${interval} price not configured for this plan. Contact support.`,
+        400
+      );
     }
 
     let customerId = org.stripeCustomerId;
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
     const sessionParams: Record<string, unknown> = {
       customer: customerId,
       mode: "subscription",
-      line_items: [{ price: planConfig.priceId, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         trial_period_days:
           org.plan === "free" && !org.trialEndsAt ? 30 : undefined,
