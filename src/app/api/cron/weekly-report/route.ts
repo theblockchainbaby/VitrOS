@@ -48,7 +48,9 @@ export async function GET(req: NextRequest) {
         where: { organizationId: org.id, contaminationType: { not: null }, contaminationDate: { gte: weekAgo } },
       }),
       prisma.vessel.aggregate({
-        where: { organizationId: org.id, status: { notIn: ["disposed"] } },
+        // Exclude multiplied parents too: their explants live on in their
+        // children, so counting both double-counts. Matches activeVessels.
+        where: { organizationId: org.id, status: { notIn: ["disposed", "multiplied"] } },
         _sum: { explantCount: true },
       }),
       prisma.vessel.groupBy({

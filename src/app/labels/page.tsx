@@ -18,6 +18,17 @@ type LabelFormat = "barcode" | "qr" | "both";
 type LabelSize = "small" | "medium" | "large";
 type PrintMode = "browser" | "zebra";
 
+// Label values are operator-supplied (barcodes, cultivar names) and get
+// interpolated into print-window HTML. Escape them so a crafted value cannot
+// inject markup or event handlers into the print document.
+const escapeHtml = (s: string) =>
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 export default function LabelsPage() {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -174,15 +185,16 @@ export default function LabelsPage() {
       if (labelFormat === "qr" || labelFormat === "both") {
         const qr = qrByVesselId.get(v.id);
         if (qr) {
-          barcodeHTML += `<div class="label-barcode"><img src="${qr}" alt="QR ${v.barcode}" style="width: 96px; height: 96px;" /><div style="font-family: monospace; font-size: 10px;">${v.barcode}</div></div>`;
+          const safeBarcode = escapeHtml(v.barcode);
+          barcodeHTML += `<div class="label-barcode"><img src="${escapeHtml(qr)}" alt="QR ${safeBarcode}" style="width: 96px; height: 96px;" /><div style="font-family: monospace; font-size: 10px;">${safeBarcode}</div></div>`;
         }
       }
 
       return `
         <div class="label" style="width: ${style.width}; font-size: ${style.fontSize};">
           ${barcodeHTML}
-          ${v.cultivar?.name ? `<div class="label-cultivar">${v.cultivar.name}</div>` : ""}
-          ${v.stage ? `<div class="label-stage">${v.stage.toUpperCase()}</div>` : ""}
+          ${v.cultivar?.name ? `<div class="label-cultivar">${escapeHtml(v.cultivar.name)}</div>` : ""}
+          ${v.stage ? `<div class="label-stage">${escapeHtml(v.stage.toUpperCase())}</div>` : ""}
           <div class="label-date">${format(new Date(v.createdAt), "MM/dd/yyyy")}</div>
         </div>
       `;
