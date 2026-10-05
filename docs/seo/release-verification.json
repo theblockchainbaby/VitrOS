@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-05T17:30:25.325Z",
+  "checkedAt": "2026-10-05T19:52:15.856Z",
   "origin": "http://127.0.0.1:3101",
   "checks": [
     {
@@ -10,7 +10,7 @@
       "robots": "index, follow",
       "og": "https://vitroslabs.com/images/product/tissue-culture-dashboard.png",
       "h1": [
-        "Plant tissue culture software for a connected lab."
+        "Every culture. Connected."
       ],
       "schema": [
         {
