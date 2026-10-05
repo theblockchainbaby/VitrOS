@@ -1,5 +1,5 @@
 import { PublicPage } from "@/components/public-site";
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,24 +8,12 @@ import { getAllPosts, type SanityPost } from "@/sanity/queries";
 import { BlogUnavailable } from "./blog-unavailable";
 import { format } from "date-fns";
 
-export const metadata: Metadata = {
-  title: "Blog | Tissue Culture Lab Tips & Industry Insights | VitrOS",
+export const metadata = publicPageMetadata({
+  title: "Tissue Culture Lab Management Guides | VitrOS",
   description:
-    "Practical guides, industry insights, and operations advice for tissue culture labs. Learn how modern labs are scaling faster with better systems.",
-  keywords: [
-    "tissue culture blog",
-    "lab management tips",
-    "plant propagation insights",
-    "tissue culture operations",
-    "lab software guides",
-    "contamination tracking tips",
-  ],
-  openGraph: {
-    title: "Blog | Tissue Culture Lab Tips & Industry Insights | VitrOS",
-    description:
-      "Practical guides, industry insights, and operations advice for tissue culture labs.",
-  },
-};
+    "Practical guides to tissue culture records, vessel labeling, subculture planning, contamination tracking, and running a connected plant laboratory.",
+  path: "/blog",
+});
 
 export const revalidate = 60;
 
@@ -44,7 +32,7 @@ export default async function BlogPage() {
       <section className="py-16 md:py-24 px-4 border-b">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-            Lab Insights
+            Tissue culture lab management guides
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl">
             Practical guides and industry perspective for tissue culture labs that are serious about scaling.

@@ -1,26 +1,15 @@
 import { PublicPage } from "@/components/public-site";
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Check, Clock, Scan, BarChart3, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = {
-  title: "Get a Demo | VitrOS Tissue Culture Lab Software",
+export const metadata = publicPageMetadata({
+  title: "Tissue Culture Software Demo | VitrOS",
   description:
-    "See how VitrOS replaces spreadsheets and legacy systems with modern vessel tracking, barcode scanning, and real-time dashboards. Explore the demo or arrange a guided walkthrough.",
-  keywords: [
-    "lab sample tracking system",
-    "tissue culture tools",
-    "plant lab OS",
-    "tissue culture lab software demo",
-    "lab management demo",
-  ],
-  openGraph: {
-    title: "Get a Demo | VitrOS Tissue Culture Lab Software",
-    description:
-      "See how VitrOS replaces spreadsheets and legacy systems with modern vessel tracking, barcode scanning, and real-time dashboards.",
-  },
-};
+    "See VitrOS vessel tracking, barcode scanning, culture lineage, and production planning in action. Explore the demo or request a guided lab walkthrough.",
+  path: "/demo",
+});
 
 const DEMO_HIGHLIGHTS = [
   {
@@ -53,7 +42,7 @@ export default function DemoPage() {
       <section className="py-16 md:py-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight mb-6">
-            See VitrOS in Action
+            See VitrOS tissue culture software in action
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
             VitrOS is the lab sample tracking system that replaces spreadsheets, paper logs, and legacy

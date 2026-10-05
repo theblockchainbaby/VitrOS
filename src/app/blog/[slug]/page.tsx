@@ -1,6 +1,7 @@
 import styles from "@/components/public-site.module.css";
 import { PublicPage } from "@/components/public-site";
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -10,6 +11,10 @@ import { PortableText } from "next-sanity";
 import { getPostBySlug, getAllSlugs, type SanityPost } from "@/sanity/queries";
 import { BlogUnavailable } from "../blog-unavailable";
 import { format } from "date-fns";
+import { publicPageMetadata } from "@/lib/seo";
+
+// Share the same CMS result between metadata and page rendering for this request.
+const getArticle = cache(getPostBySlug);
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -31,17 +36,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   let post: SanityPost | null;
   try {
-    post = await getPostBySlug(slug);
+    post = await getArticle(slug);
   } catch {
     return { title: "Article unavailable | VitrOS", robots: { index: false } };
   }
-  if (!post) return {};
-  return {
+  if (!post) notFound();
+  const metadata = publicPageMetadata({
     title: `${post.title} | VitrOS Blog`,
     description: post.excerpt,
+    path: `/blog/${encodeURIComponent(post.slug)}`,
+  });
+  return {
+    ...metadata,
     openGraph: {
-      title: `${post.title} | VitrOS Blog`,
-      description: post.excerpt,
+      ...metadata.openGraph,
+      type: "article",
+      publishedTime: post.publishedAt,
+      authors: post.author ? [post.author] : undefined,
     },
   };
 }
@@ -50,7 +61,7 @@ export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   let post: SanityPost | null;
   try {
-    post = await getPostBySlug(slug);
+    post = await getArticle(slug);
   } catch {
     return <PublicPage><section className="mx-auto max-w-6xl px-4 py-16 md:py-24"><BlogUnavailable article /></section></PublicPage>;
   }

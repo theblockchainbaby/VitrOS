@@ -60,11 +60,11 @@ export function PublicPage({ children }: { children: React.ReactNode }) {
   return <div className={styles.site}><PublicNav /><main id="public-content" className={styles.content}>{children}</main><PublicFooter /></div>;
 }
 
-export function ProductScreenshot({ src = "/images/product/today.png", alt, caption }: { src?: string; alt: string; caption: string }) {
+export function ProductScreenshot({ src = "/images/product/tissue-culture-dashboard.png", alt, caption, sizes = "(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) calc(100vw - 48px), 1152px" }: { src?: string; alt: string; caption: string; sizes?: string }) {
   return <figure className="min-w-0 overflow-hidden rounded-xl border bg-card">
     <a href={src} target="_blank" rel="noopener noreferrer" aria-label={`Open full-size screenshot: ${alt}`} className="block focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-3px]">
-      <Image src={src} alt={alt} width={1440} height={1000} sizes="(max-width: 768px) 100vw, 1120px" className="h-auto w-full" />
+      <Image src={src} alt={alt} width={1440} height={1080} sizes={sizes} className="h-auto w-full" />
     </a>
-    <figcaption className="border-t px-4 py-3 text-xs leading-relaxed text-muted-foreground">{caption} · Demonstration data. Open image to inspect.</figcaption>
+    <figcaption className="border-t px-4 py-3 text-xs leading-relaxed text-muted-foreground">{caption} · Actual VitrOS interface with demonstration data. Open image to inspect.</figcaption>
   </figure>;
 }

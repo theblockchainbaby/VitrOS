@@ -1,0 +1,107 @@
+{
+  "checkedAt": "2026-10-05T17:30:19.152Z",
+  "origin": "http://127.0.0.1:3101",
+  "results": [
+    {
+      "route": "/",
+      "images": [
+        {
+          "alt": "",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fv-icon.png&w=48&q=75",
+          "complete": true,
+          "width": 48,
+          "height": 44
+        },
+        {
+          "alt": "Barcode-labeled culture vessels arranged on shelves in a tissue culture production room",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fimages%2Fhomepage%2Ftc-verticals.jpg&w=640&q=75",
+          "complete": true,
+          "width": 519,
+          "height": 346
+        },
+        {
+          "alt": "VitrOS Today dashboard showing vessel counts, due subcultures, recent activity, and contamination rate",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fimages%2Fproduct%2Ftissue-culture-dashboard.png&w=1200&q=75",
+          "complete": true,
+          "width": 1152,
+          "height": 864
+        },
+        {
+          "alt": "AI photo illustration of a technician working with plant tissue cultures at a laboratory bench",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fimages%2Fhomepage%2Ftissue-culture-bench-ai.png&w=640&q=75",
+          "complete": true,
+          "width": 544,
+          "height": 362
+        },
+        {
+          "alt": "AI photo illustration of a Monstera deliciosa tissue culture vessel labeled TC-2026-0042, matching the adjacent VitrOS record",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fimages%2Fhomepage%2Flabeled-culture-vessel-ai.png&w=640&q=75",
+          "complete": true,
+          "width": 466,
+          "height": 310
+        },
+        {
+          "alt": "VitrOS vessel record for TC-2026-0042 showing Monstera deliciosa, multiplication stage, health, location, and next subculture date",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fimages%2Fproduct%2Fvessel-record.png&w=750&q=75",
+          "complete": true,
+          "width": 658,
+          "height": 493
+        },
+        {
+          "alt": "",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fv-icon.png&w=48&q=75",
+          "complete": true,
+          "width": 48,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "images": [
+        {
+          "alt": "",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fv-icon.png&w=48&q=75",
+          "complete": true,
+          "width": 48,
+          "height": 44
+        },
+        {
+          "alt": "VitrOS record for vessel TC-2026-0042 with cultivar, production stage, health, location, and next subculture date",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fimages%2Fproduct%2Fvessel-record.png&w=828&q=75",
+          "complete": true,
+          "width": 786,
+          "height": 589
+        },
+        {
+          "alt": "VitrOS lineage tree connecting parent and child culture records across generations",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fimages%2Fproduct%2Fculture-lineage.png&w=828&q=75",
+          "complete": true,
+          "width": 786,
+          "height": 589
+        },
+        {
+          "alt": "VitrOS QR label for TC-2026-0042, Monstera deliciosa, multiplication stage",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fimages%2Fproduct%2Fvessel-label-preview.png&w=128&q=75",
+          "complete": true,
+          "width": 104,
+          "height": 83
+        },
+        {
+          "alt": "VitrOS Scan Vessel interface showing record TC-2026-0042 and fields to update the culture from the bench",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fimages%2Fproduct%2Fvessel-scanning.png&w=828&q=75",
+          "complete": true,
+          "width": 786,
+          "height": 589
+        },
+        {
+          "alt": "",
+          "src": "http://127.0.0.1:3101/_next/image?url=%2Fv-icon.png&w=48&q=75",
+          "complete": true,
+          "width": 48,
+          "height": 44
+        }
+      ]
+    }
+  ]
+}

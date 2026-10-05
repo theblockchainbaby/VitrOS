@@ -1,27 +1,16 @@
 import { PublicPage } from "@/components/public-site";
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-export const metadata: Metadata = {
-  title: "Pricing | VitrOS Lab Management Software",
+export const metadata = publicPageMetadata({
+  title: "Tissue Culture Software Pricing & Plans | VitrOS",
   description:
-    "Simple, scalable pricing for tissue culture labs. Start from $49/mo with vessel tracking, barcode scanning, dashboards, and more. Try VitrOS today.",
-  keywords: [
-    "lab workflow software",
-    "tissue tracking software",
-    "lab inventory software",
-    "lab management software pricing",
-    "tissue culture software cost",
-  ],
-  openGraph: {
-    title: "Pricing | VitrOS Lab Management Software",
-    description:
-      "Simple, scalable pricing for tissue culture labs. Start from $49/mo with vessel tracking, barcode scanning, dashboards, and more.",
-  },
-};
+    "Compare VitrOS plans for tissue culture labs, including vessel limits, team access, and lab management features. Choose a plan for your operation.",
+  path: "/pricing",
+});
 
 const PLANS = [
   {
@@ -135,7 +124,7 @@ export default async function PricingPage({
       <section className="py-16 md:py-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight mb-6">
-            Simple, Scalable Pricing for Every Lab
+            Tissue culture software pricing
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Lab workflow software that grows with your operation. Every plan includes vessel tracking,

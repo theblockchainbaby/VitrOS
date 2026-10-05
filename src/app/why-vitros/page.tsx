@@ -1,26 +1,15 @@
 import { PublicPage } from "@/components/public-site";
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight, FileText, Scan, ShieldAlert, Clock, BarChart3, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = {
-  title: "Why VitrOS | Modern Software for Plant Propagation Labs",
+export const metadata = publicPageMetadata({
+  title: "Replace Tissue Culture Spreadsheets with VitrOS",
   description:
-    "Tired of outdated lab software? VitrOS replaces spreadsheets, paper logs, and legacy systems with automated tracking built for tissue culture operations.",
-  keywords: [
-    "automated plant propagation",
-    "tissue culture equipment",
-    "plant propagation automation",
-    "tissue culture lab software",
-    "lab management software",
-  ],
-  openGraph: {
-    title: "Why VitrOS | Modern Software for Plant Propagation Labs",
-    description:
-      "Tired of outdated lab software? VitrOS replaces spreadsheets, paper logs, and legacy systems with automated tracking built for tissue culture operations.",
-  },
-};
+    "Move tissue culture records from spreadsheets and paper logs into connected vessel tracking, lineage, media records, and shared lab workflows with VitrOS.",
+  path: "/why-vitros",
+});
 
 const PAIN_POINTS = [
   {
@@ -68,7 +57,7 @@ export default function WhyVitrOSPage() {
       <section className="py-16 md:py-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight mb-6">
-            Built for Labs That Have Outgrown Spreadsheets
+            Tissue culture records beyond spreadsheets
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             Most tissue culture labs rely on paper, Excel, or aging custom software that can&apos;t keep up.
