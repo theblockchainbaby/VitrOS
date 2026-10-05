@@ -7,13 +7,14 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandMark } from "@/components/brand-mark";
 import styles from "./public-site.module.css";
 
 const links = [["/features", "Features"], ["/why-vitros", "Why VitrOS"], ["/pricing", "Pricing"], ["/blog", "Resources"], ["/demo", "Demo"]];
 
 export function PublicBrand() {
   return <Link href="/" aria-label="VitrOS home" className="inline-flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-ring">
-    <Image src="/v-icon.png" alt="" width={36} height={36} className="size-9 object-contain" />
+    <BrandMark className="size-9 shrink-0" />
     <span className="text-xl font-semibold tracking-tight">VitrOS</span>
   </Link>;
 }
