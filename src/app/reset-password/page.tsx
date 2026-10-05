@@ -3,10 +3,10 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import Image from "next/image";
+import { AuthShell } from "@/components/auth-shell";
+import { PasswordInput } from "@/components/password-input";
 
 export default function ResetPasswordPage() {
   return (
@@ -66,19 +66,11 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30">
-      <div className="w-full max-w-md mx-4">
-        <div className="rounded-xl border bg-card p-8 shadow-sm">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Image src="/logo.png" alt="VitrOS" width={500} height={488} className="h-14 w-auto" />
-          </div>
-          <p className="text-center text-muted-foreground mb-6">
-            Choose a new password
-          </p>
+    <AuthShell title="Choose a new password" description="Set a strong password for your VitrOS account.">
 
           {success ? (
             <div className="space-y-4">
-              <div className="rounded-lg bg-primary/10 text-foreground text-sm p-4">
+              <div role="status" className="rounded-lg bg-primary/10 text-foreground text-sm p-4">
                 Your password has been reset. Redirecting you to sign in...
               </div>
               <p className="text-center text-sm text-muted-foreground">
@@ -89,7 +81,7 @@ function ResetPasswordForm() {
             </div>
           ) : !token ? (
             <div className="space-y-4">
-              <div className="rounded-lg bg-destructive/10 text-destructive text-sm p-3">
+              <div role="alert" className="rounded-lg bg-destructive/10 text-destructive text-sm p-3">
                 This reset link is invalid or has expired. Request a new one.
               </div>
               <p className="text-center text-sm text-muted-foreground">
@@ -101,17 +93,17 @@ function ResetPasswordForm() {
           ) : (
             <>
               {error && (
-                <div className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 mb-4">
+                <div role="alert" className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 mb-4">
                   {error}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form aria-busy={loading} onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="password">New Password</Label>
-                  <Input
+                  <PasswordInput
                     id="password"
-                    type="password"
+
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 8 characters"
@@ -123,9 +115,9 @@ function ResetPasswordForm() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                  <Input
+                  <PasswordInput
                     id="confirmPassword"
-                    type="password"
+
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter your new password"
@@ -146,8 +138,6 @@ function ResetPasswordForm() {
               </p>
             </>
           )}
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

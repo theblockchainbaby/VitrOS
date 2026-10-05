@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Key, Copy, Check, Webhook, ExternalLink } from "lucide-react";
+import { DeviceSetup } from "@/components/device-setup";
+import { PageLoading, PageError } from "@/components/page-state";
+import { toast } from "sonner";
+import { Plus, Key, Copy, Check, Webhook } from "lucide-react";
 
 interface ApiKeyData {
   id: string;
@@ -38,23 +41,29 @@ export default function IntegrationsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
+  const [createError, setCreateError] = useState("");
   const [form, setForm] = useState({
     name: "",
     permissions: ["vessels:read", "orders:read"],
     expiresInDays: "",
   });
 
-  useEffect(() => {
-    fetch("/api/api-keys")
-      .then((r) => r.json())
-      .then((data) => {
-        setApiKeys(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+  const loadKeys = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const response = await fetch("/api/api-keys");
+      if (!response.ok) throw new Error("Could not load API keys. Check your access or try again.");
+      setApiKeys(await response.json());
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not load API keys."); }
+    finally { setLoading(false); }
   }, []);
+  useEffect(() => { loadKeys(); }, [loadKeys]);
 
   async function handleCreate() {
+    if (creating) return;
+    setCreating(true); setCreateError("");
     try {
       const res = await fetch("/api/api-keys", {
         method: "POST",
@@ -68,12 +77,15 @@ export default function IntegrationsPage() {
       if (res.ok) {
         const data = await res.json();
         setNewKey(data.key);
-        const updated = await fetch("/api/api-keys").then((r) => r.json());
-        setApiKeys(updated);
+        setCopied(false);
+        await loadKeys();
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Could not create an API key.");
       }
     } catch (err) {
-      console.error("Failed to create API key:", err);
-    }
+      setCreateError(err instanceof Error ? err.message : "Could not create an API key.");
+    } finally { setCreating(false); }
   }
 
   function togglePermission(perm: string) {
@@ -85,59 +97,27 @@ export default function IntegrationsPage() {
     }));
   }
 
-  function copyKey() {
-    if (newKey) {
-      navigator.clipboard.writeText(newKey);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  async function copyKey() {
+    if (!newKey) return;
+    try { await navigator.clipboard.writeText(newKey); setCopied(true); }
+    catch { toast.error("Could not copy. Select the key and copy it manually."); }
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Integrations"
-        description="Connect external systems like Fox ERP via API keys and webhooks"
+        description="Set up bench devices and connect your lab systems"
       />
 
-      {/* API Documentation Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">REST API</CardTitle>
-          <CardDescription>
-            Use the VitrOS API to connect your ERP, LIMS, or other systems. All endpoints are under <code className="text-xs bg-muted px-1 rounded">/api/v1/</code>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <h4 className="font-medium mb-2">Available Endpoints</h4>
-              <div className="space-y-1 font-mono text-xs">
-                <p><span className="text-green-500">GET</span> /api/v1/vessels</p>
-                <p><span className="text-green-500">GET</span> /api/v1/vessels/:id</p>
-                <p><span className="text-green-500">GET</span> /api/v1/orders</p>
-                <p><span className="text-green-500">GET</span> /api/v1/clone-lines</p>
-                <p><span className="text-green-500">GET</span> /api/v1/webhooks</p>
-                <p><span className="text-blue-500">POST</span> /api/v1/webhooks</p>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">Authentication</h4>
-              <p className="text-muted-foreground mb-2">Include your API key in the Authorization header:</p>
-              <code className="text-xs bg-muted px-2 py-1 rounded block">
-                Authorization: Bearer vtrs_your_key_here
-              </code>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <DeviceSetup />
 
       {/* API Keys */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap gap-3 items-center justify-between">
         <h2 className="text-lg font-semibold">API Keys</h2>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open);
-          if (!open) { setNewKey(null); setForm({ name: "", permissions: ["vessels:read", "orders:read"], expiresInDays: "" }); }
+          if (!open) { setCreateError(""); setCopied(false); setNewKey(null); setForm({ name: "", permissions: ["vessels:read", "orders:read"], expiresInDays: "" }); }
         }}>
           <DialogTrigger asChild>
             <Button><Plus className="size-4 mr-2" /> Create API Key</Button>
@@ -156,7 +136,7 @@ export default function IntegrationsPage() {
                     <code className="flex-1 text-xs bg-white dark:bg-black p-2 rounded font-mono break-all">
                       {newKey}
                     </code>
-                    <Button size="sm" variant="outline" onClick={copyKey}>
+                    <Button size="sm" variant="outline" onClick={copyKey} aria-label={copied ? "Key copied" : "Copy API key"}>
                       {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
                     </Button>
                   </div>
@@ -168,9 +148,9 @@ export default function IntegrationsPage() {
             ) : (
               <div className="space-y-4 pt-4">
                 <div>
-                  <Label>Key Name</Label>
+                  <Label htmlFor="api-key-name">Key Name</Label>
                   <Input
-                    placeholder="e.g. Fox ERP Integration"
+                    id="api-key-name" placeholder="e.g. ERP Integration"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     className="mt-1"
@@ -180,29 +160,29 @@ export default function IntegrationsPage() {
                   <Label>Permissions</Label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {AVAILABLE_PERMISSIONS.map((p) => (
-                      <Badge
+                      <button type="button" aria-pressed={form.permissions.includes(p.value)}
                         key={p.value}
-                        variant={form.permissions.includes(p.value) ? "default" : "outline"}
-                        className="cursor-pointer"
+                        className={`rounded-md border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring ${form.permissions.includes(p.value) ? "bg-accent border-primary text-accent-foreground" : "hover:bg-muted"}`}
                         onClick={() => togglePermission(p.value)}
                       >
                         {p.label}
-                      </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <Label>Expires In (days, optional)</Label>
+                  <Label htmlFor="api-key-expiry">Expires In (days, optional)</Label>
                   <Input
-                    type="number"
+                    id="api-key-expiry" min="1" type="number"
                     placeholder="Leave empty for no expiration"
                     value={form.expiresInDays}
                     onChange={(e) => setForm({ ...form, expiresInDays: e.target.value })}
                     className="mt-1"
                   />
                 </div>
-                <Button onClick={handleCreate} className="w-full" disabled={!form.name || form.permissions.length === 0}>
-                  Generate Key
+                {createError && <p role="alert" className="text-sm text-destructive">{createError}</p>}
+                <Button onClick={handleCreate} className="w-full" disabled={creating || !form.name.trim() || form.permissions.length === 0}>
+                  {creating ? "Creating key…" : "Generate Key"}
                 </Button>
               </div>
             )}
@@ -211,8 +191,8 @@ export default function IntegrationsPage() {
       </div>
 
       {loading ? (
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Loading...</CardContent></Card>
-      ) : apiKeys.length === 0 ? (
+        <PageLoading label="Loading API keys…" />
+      ) : error ? (<PageError message={error} retry={loadKeys} />) : apiKeys.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Key className="size-12 mx-auto mb-4 text-muted-foreground" />
@@ -225,7 +205,7 @@ export default function IntegrationsPage() {
           {apiKeys.map((key) => (
             <Card key={key.id}>
               <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-3 items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Key className="size-5 text-muted-foreground" />
                     <div>
@@ -254,6 +234,38 @@ export default function IntegrationsPage() {
           ))}
         </div>
       )}
+
+      {/* API Documentation Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">REST API</CardTitle>
+          <CardDescription>
+            Use the VitrOS API to connect your ERP, LIMS, or other systems. All endpoints are under <code className="text-xs bg-muted px-1 rounded">/api/v1/</code>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <h4 className="font-medium mb-2">Available Endpoints</h4>
+              <div className="space-y-1 font-mono text-xs">
+                <p><span className="text-green-500">GET</span> /api/v1/vessels</p>
+                <p><span className="text-green-500">GET</span> /api/v1/vessels/:id</p>
+                <p><span className="text-green-500">GET</span> /api/v1/orders</p>
+                <p><span className="text-green-500">GET</span> /api/v1/clone-lines</p>
+                <p><span className="text-green-500">GET</span> /api/v1/webhooks</p>
+                <p><span className="text-blue-500">POST</span> /api/v1/webhooks</p>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-medium mb-2">Authentication</h4>
+              <p className="text-muted-foreground mb-2">Include your API key in the Authorization header:</p>
+              <code className="text-xs bg-muted px-2 py-1 rounded block break-all">
+                Authorization: Bearer YOUR_API_KEY
+              </code>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Webhook Info */}
       <Card>

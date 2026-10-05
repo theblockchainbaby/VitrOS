@@ -7,17 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { PageLoading, PageError } from "@/components/page-state";
+import { toast } from "sonner";
+import { exportToCSV } from "@/lib/csv-export";
 import { PageHeader } from "@/components/page-header";
 import {
-  Users, Trophy, AlertTriangle, DollarSign, TrendingUp, Clock,
+  Users, Trophy, AlertTriangle, DollarSign, TrendingUp,
   Download, ChevronRight, ChevronLeft, Beaker, MessageSquare,
-  Play, Square, Settings, FlaskConical, ArrowUpDown, Target,
+  Play, Square, Settings, FlaskConical, Target,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Legend,
+  Legend,
 } from "recharts";
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
@@ -95,6 +97,8 @@ type Tab = "overview" | "drilldown" | "stations" | "notes" | "settings";
 export default function TeamPerformancePage() {
   const [data, setData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [updating, setUpdating] = useState(false);
   const [period, setPeriod] = useState("week");
   const [tab, setTab] = useState<Tab>("overview");
   const [selectedTech, setSelectedTech] = useState<TechPerformance | null>(null);
@@ -105,14 +109,16 @@ export default function TeamPerformancePage() {
   const [clockedIn, setClockedIn] = useState(false);
   const [activeShiftId, setActiveShiftId] = useState<string | null>(null);
   const [selectedStation, setSelectedStation] = useState<string>("");
-  const [todayPoints, setTodayPoints] = useState(0);
-  const [todayVessels, setTodayVessels] = useState(0);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); setError("");
     try {
       const res = await fetch(`/api/team-performance?period=${period}`);
-      if (res.ok) setData(await res.json());
+      if (!res.ok) throw new Error("Team performance could not be loaded.");
+      const next: TeamData = await res.json();
+      setData(next);
+      setSelectedTech((previous) => previous ? next.technicians.find((tech) => tech.user.id === previous.user.id) || null : null);
+    } catch (err) { setError(err instanceof Error ? err.message : "Team performance could not be loaded.");
     } finally {
       setLoading(false);
     }
@@ -146,102 +152,67 @@ export default function TeamPerformancePage() {
     checkActiveShift();
   }, [fetchData, fetchNotes, fetchStations, checkActiveShift]);
 
-  // Refresh today's points from the data
-  useEffect(() => {
-    if (data && period === "today") {
-      const me = data.technicians.find((t) => t.shifts.some((s) => !s.clockOut));
-      if (me) {
-        setTodayPoints(me.totalPoints);
-        setTodayVessels(me.vesselsProcessed);
-      }
-    }
-  }, [data, period]);
-
   const handleClockIn = async () => {
-    const res = await fetch("/api/tech-shifts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stationId: selectedStation || null }),
-    });
-    if (res.ok) {
-      const shift = await res.json();
-      setClockedIn(true);
-      setActiveShiftId(shift.id);
-    }
+    if (updating) return;
+    setUpdating(true);
+    try {
+      const res = await fetch("/api/tech-shifts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stationId: selectedStation || null }) });
+      if (!res.ok) throw new Error("Could not clock in. Please try again.");
+      const shift = await res.json(); setClockedIn(true); setActiveShiftId(shift.id);
+      toast.success("Clocked in");
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Could not confirm clock in. Refresh before retrying."); }
+    finally { setUpdating(false); }
   };
 
   const handleClockOut = async () => {
-    if (!activeShiftId) return;
-    const res = await fetch(`/api/tech-shifts/${activeShiftId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "completed" }),
-    });
-    if (res.ok) {
-      setClockedIn(false);
-      setActiveShiftId(null);
-      fetchData();
-    }
+    if (!activeShiftId || updating) return;
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/tech-shifts/${activeShiftId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "completed" }) });
+      if (!res.ok) throw new Error("Could not clock out. Please try again.");
+      setClockedIn(false); setActiveShiftId(null); fetchData(); toast.success("Clocked out");
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Could not confirm clock out. Refresh before retrying."); }
+    finally { setUpdating(false); }
   };
 
   const handleAddNote = async () => {
-    if (!newNote.trim()) return;
-    const res = await fetch("/api/shift-notes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: newNote, priority: notePriority }),
-    });
-    if (res.ok) {
-      setNewNote("");
-      setNotePriority("normal");
-      fetchNotes();
-    }
+    if (!newNote.trim() || updating) return;
+    setUpdating(true);
+    try {
+      const res = await fetch("/api/shift-notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: newNote, priority: notePriority }) });
+      if (!res.ok) throw new Error("Note was not saved. Please try again.");
+      setNewNote(""); setNotePriority("normal"); fetchNotes(); toast.success("Shift note saved");
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Could not save note. Your text is preserved."); }
+    finally { setUpdating(false); }
   };
 
   const exportCSV = () => {
     if (!data) return;
-    const headers = ["Rank", "Name", "Vessels", "Points", "Hours", "Eff. Rate", "Contam %", "Bonus", "Status"];
-    const rows = data.technicians.map((t, i) => [
-      i + 1,
-      t.user.name,
-      t.vesselsProcessed,
-      t.totalPoints,
-      t.totalHours,
-      `$${t.effectiveRate}`,
-      `${t.contaminationRate}%`,
-      `$${t.bonusAmount}`,
-      t.status,
-    ]);
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `team-performance-${period}-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportToCSV(data.technicians.map((tech, index) => ({ rank: index + 1, name: tech.user.name, vessels: tech.vesselsProcessed, points: tech.totalPoints, hours: tech.totalHours, effectiveRate: tech.effectiveRate, contaminationPercent: tech.contaminationRate, bonus: tech.bonusAmount, status: tech.status })), `team-performance-${period}-${new Date().toISOString().split("T")[0]}`);
   };
 
   if (loading && !data) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="space-y-4">
         <PageHeader title="Team Performance" />
-        <div className="text-center text-muted-foreground py-20">Loading performance data...</div>
+        <PageLoading label="Loading team performance…" />
       </div>
     );
   }
+
+  if (error || !data) return <div className="space-y-6"><PageHeader title="Team Performance" /><PageError message={error || "Team performance is unavailable."} retry={fetchData} /></div>;
 
   const t = data?.team;
   const cfg = data?.config;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <PageHeader title="Team Performance" />
-        <div className="flex items-center gap-2">
+    <div className="space-y-6 min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <PageHeader title="Team Performance" description={`${new Date(data.period.from).toLocaleDateString()} – ${new Date(data.period.to).toLocaleDateString()}`} />
+        <div className="flex flex-wrap items-center gap-2">
           {/* Clock In/Out */}
           {!clockedIn ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {stations.length > 0 && (
                 <Select value={selectedStation} onValueChange={setSelectedStation}>
                   <SelectTrigger className="w-[160px]">
@@ -254,12 +225,12 @@ export default function TeamPerformancePage() {
                   </SelectContent>
                 </Select>
               )}
-              <Button onClick={handleClockIn} className="bg-green-600 hover:bg-green-700">
+              <Button disabled={updating} onClick={handleClockIn}>
                 <Play className="h-4 w-4 mr-1" /> Clock In
               </Button>
             </div>
           ) : (
-            <Button onClick={handleClockOut} variant="destructive">
+            <Button disabled={updating} onClick={handleClockOut} variant="destructive">
               <Square className="h-4 w-4 mr-1" /> Clock Out
             </Button>
           )}
@@ -267,21 +238,21 @@ export default function TeamPerformancePage() {
       </div>
 
       {/* Period Selector + Tabs */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1 bg-muted rounded-lg p-1">
           {(["overview", "drilldown", "stations", "notes", "settings"] as Tab[]).map((t) => (
             <Button
               key={t}
               variant={tab === t ? "default" : "ghost"}
               size="sm"
-              onClick={() => setTab(t)}
+              aria-pressed={tab === t} onClick={() => setTab(t)}
               className="capitalize"
             >
               {t === "drilldown" ? "Individual" : t}
             </Button>
           ))}
         </div>
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
+        <div className="flex flex-wrap gap-1 bg-muted rounded-lg p-1">
           {[
             { key: "today", label: "Today" },
             { key: "week", label: "This Week" },
@@ -292,7 +263,7 @@ export default function TeamPerformancePage() {
               key={p.key}
               variant={period === p.key ? "default" : "ghost"}
               size="sm"
-              onClick={() => setPeriod(p.key)}
+              aria-pressed={period === p.key} onClick={() => setPeriod(p.key)}
             >
               {p.label}
             </Button>
@@ -300,6 +271,7 @@ export default function TeamPerformancePage() {
         </div>
       </div>
 
+      {loading && <p role="status" className="text-sm text-muted-foreground">Refreshing this period…</p>}
       {/* ═══ OVERVIEW TAB ═══ */}
       {tab === "overview" && t && cfg && (
         <>
@@ -329,7 +301,7 @@ export default function TeamPerformancePage() {
                   <Beaker className="h-4 w-4" /> Contamination
                 </div>
                 <div className={`text-2xl font-bold ${t.avgContaminationRate > cfg.contaminationThreshold ? "text-red-600" : "text-green-600"}`}>
-                  {t.avgContaminationRate}%
+                  {t.totalVessels > 0 ? `${t.avgContaminationRate}%` : "—"}
                 </div>
                 <div className="text-xs text-muted-foreground">threshold: {cfg.contaminationThreshold}%</div>
               </CardContent>
@@ -367,7 +339,7 @@ export default function TeamPerformancePage() {
           {/* Ranked Tech Table */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <Trophy className="h-5 w-5" /> Technician Rankings
               </CardTitle>
               <Button variant="outline" size="sm" onClick={exportCSV}>
@@ -376,7 +348,7 @@ export default function TeamPerformancePage() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <div className="max-w-full overflow-x-auto"><table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="p-2 w-12">#</th>
@@ -402,7 +374,7 @@ export default function TeamPerformancePage() {
                         }}
                       >
                         <td className="p-2 font-mono text-muted-foreground">{i + 1}</td>
-                        <td className="p-2 font-medium">{tech.user.name}</td>
+                        <td className="p-2 font-medium"><button className="text-left text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => { setSelectedTech(tech); setTab("drilldown"); }}>{tech.user.name}</button></td>
                         <td className="p-2 text-right font-mono">{tech.vesselsProcessed}</td>
                         <td className="p-2 text-right font-mono">{tech.totalPoints}</td>
                         <td className="p-2 text-right font-mono">{tech.totalHours}</td>
@@ -437,7 +409,7 @@ export default function TeamPerformancePage() {
                       </tr>
                     )}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             </CardContent>
           </Card>
@@ -449,7 +421,7 @@ export default function TeamPerformancePage() {
                 <CardTitle>Output by Technician</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer minWidth={0} width="100%" height={300}>
                   <BarChart data={data!.technicians.map((t) => ({
                     name: t.user.name.split(" ")[0],
                     vessels: t.vesselsProcessed,
@@ -461,8 +433,8 @@ export default function TeamPerformancePage() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="vessels" fill="#3b82f6" name="Vessels" />
-                    <Bar dataKey="contamination" fill="#ef4444" name="Contamination" />
+                    <Bar dataKey="vessels" fill="var(--chart-2)" name="Vessels" />
+                    <Bar dataKey="contamination" fill="var(--status-critical)" name="Contamination" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -478,7 +450,8 @@ export default function TeamPerformancePage() {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                Select a technician from the Overview tab to see their detailed performance.
+                Select a technician to inspect their output, shifts and quality for this period.
+                <div className="mt-4"><Select value="" onValueChange={(id) => setSelectedTech(data.technicians.find((tech) => tech.user.id === id) || null)}><SelectTrigger className="mx-auto w-full max-w-xs" aria-label="Choose a technician"><SelectValue placeholder="Choose a technician" /></SelectTrigger><SelectContent>{data.technicians.map((tech) => <SelectItem key={tech.user.id} value={tech.user.id}>{tech.user.name}</SelectItem>)}</SelectContent></Select></div>
               </CardContent>
             </Card>
           ) : (
@@ -527,7 +500,7 @@ export default function TeamPerformancePage() {
                   <CardTitle>Task Breakdown</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <table className="w-full text-sm">
+                  <div className="max-w-full overflow-x-auto"><table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
                         <th className="p-2">Stage</th>
@@ -549,7 +522,7 @@ export default function TeamPerformancePage() {
                         <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">No tasks in this period.</td></tr>
                       )}
                     </tbody>
-                  </table>
+                  </table></div>
                 </CardContent>
               </Card>
 
@@ -559,7 +532,7 @@ export default function TeamPerformancePage() {
                   <CardTitle>Shift History</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <table className="w-full text-sm">
+                  <div className="max-w-full overflow-x-auto"><table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
                         <th className="p-2">Date</th>
@@ -589,7 +562,7 @@ export default function TeamPerformancePage() {
                         <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">No shifts logged.</td></tr>
                       )}
                     </tbody>
-                  </table>
+                  </table></div>
                 </CardContent>
               </Card>
 
@@ -597,7 +570,7 @@ export default function TeamPerformancePage() {
               {cfg?.dailyVesselTarget && period === "today" && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex flex-wrap items-center gap-2">
                       <Target className="h-5 w-5" /> Daily Target
                     </CardTitle>
                   </CardHeader>
@@ -633,14 +606,14 @@ export default function TeamPerformancePage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 <Beaker className="h-5 w-5" /> Station Contamination Analysis
               </CardTitle>
             </CardHeader>
             <CardContent>
               {data.stations.length > 0 ? (
                 <>
-                  <table className="w-full text-sm mb-6">
+                  <div className="max-w-full overflow-x-auto"><table className="w-full text-sm mb-6">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
                         <th className="p-2">Station</th>
@@ -661,22 +634,22 @@ export default function TeamPerformancePage() {
                           </td>
                           <td className="p-2">
                             {s.contaminationRate > (cfg?.contaminationThreshold ?? 5) ? (
-                              <Badge variant="destructive">Check HEPA</Badge>
+                              <Badge variant="destructive">Review quality</Badge>
                             ) : (
-                              <Badge variant="default">Normal</Badge>
+                              <Badge variant="secondary">Within threshold</Badge>
                             )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
-                  <ResponsiveContainer width="100%" height={250}>
+                  </table></div>
+                  <ResponsiveContainer minWidth={0} width="100%" height={250}>
                     <BarChart data={data.stations}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="contaminationRate" fill="#ef4444" name="Contam %" />
+                      <Bar dataKey="contaminationRate" fill="var(--status-critical)" name="Contam %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </>
@@ -697,7 +670,7 @@ export default function TeamPerformancePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <table className="w-full text-sm">
+                <div className="max-w-full overflow-x-auto"><table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="p-2">Batch #</th>
@@ -714,7 +687,7 @@ export default function TeamPerformancePage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </CardContent>
             </Card>
           )}
@@ -725,13 +698,13 @@ export default function TeamPerformancePage() {
       {tab === "notes" && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               <MessageSquare className="h-5 w-5" /> Shift Handoff Notes
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* New Note Form */}
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Textarea
                 placeholder="Leave a note for the next shift..."
                 value={newNote}
@@ -750,7 +723,7 @@ export default function TeamPerformancePage() {
                     <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button onClick={handleAddNote} disabled={!newNote.trim()}>Post</Button>
+                <Button onClick={handleAddNote} disabled={updating || !newNote.trim()}>Post</Button>
               </div>
             </div>
 
@@ -768,7 +741,7 @@ export default function TeamPerformancePage() {
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-sm">{note.author.name}</span>
                       {note.priority !== "normal" && (
                         <Badge variant={note.priority === "urgent" ? "destructive" : "default"} className="text-xs">
@@ -820,43 +793,35 @@ function IncentiveSettings({
 
   const saveConfig = async () => {
     setSaving(true);
-    await fetch("/api/incentive-config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        baseHourlyRate: baseRate,
-        pointDollarValue: pointValue,
-        contaminationThreshold: contamThreshold,
-        contaminationLookbackDays: lookbackDays,
-        bonusPeriod,
-        dailyVesselTarget: dailyTarget ? parseInt(dailyTarget) : null,
-      }),
-    });
-    setSaving(false);
-    onSave();
+    try {
+      const res = await fetch("/api/incentive-config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ baseHourlyRate: baseRate, pointDollarValue: pointValue, contaminationThreshold: contamThreshold, contaminationLookbackDays: lookbackDays, bonusPeriod, dailyVesselTarget: dailyTarget ? parseInt(dailyTarget) : null }) });
+      if (!res.ok) throw new Error("Configuration was not saved.");
+      toast.success("Configuration saved"); onSave();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Could not save configuration. Please retry."); }
+    finally { setSaving(false); }
   };
 
   const addStation = async () => {
-    if (!newStationName.trim()) return;
-    await fetch("/api/stations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newStationName, type: newStationType }),
-    });
-    setNewStationName("");
-    onSave();
+    if (!newStationName.trim() || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/stations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newStationName, type: newStationType }) });
+      if (!res.ok) throw new Error("Station was not saved.");
+      setNewStationName(""); onSave(); toast.success("Station added");
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Could not save station. Please retry."); }
+    finally { setSaving(false); }
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex flex-wrap items-center gap-2">
             <Settings className="h-5 w-5" /> Incentive Configuration
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <Label>Base Hourly Rate ($)</Label>
               <Input type="number" step="0.5" value={baseRate} onChange={(e) => setBaseRate(parseFloat(e.target.value))} />
@@ -905,14 +870,14 @@ function IncentiveSettings({
           <CardTitle>Stations / Hoods</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               placeholder="Station name (e.g. Hood 1)"
               value={newStationName}
               onChange={(e) => setNewStationName(e.target.value)}
             />
             <Select value={newStationType} onValueChange={setNewStationType}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -921,7 +886,7 @@ function IncentiveSettings({
                 <SelectItem value="prep_station">Prep Station</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={addStation}>Add</Button>
+            <Button disabled={saving || !newStationName.trim()} onClick={addStation}>Add</Button>
           </div>
           <div className="space-y-2">
             {stations.map((s) => (

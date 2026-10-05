@@ -48,72 +48,84 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.45 0.14 145);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.96 0.02 145);
-  --secondary-foreground: oklch(0.25 0.06 145);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.50 0 0);
-  --accent: oklch(0.94 0.03 145);
-  --accent-foreground: oklch(0.25 0.06 145);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.91 0.01 145);
-  --input: oklch(0.91 0.01 145);
-  --ring: oklch(0.55 0.14 145);
-  --chart-1: oklch(0.55 0.15 145);
-  --chart-2: oklch(0.65 0.15 160);
-  --chart-3: oklch(0.50 0.10 200);
-  --chart-4: oklch(0.70 0.15 85);
-  --chart-5: oklch(0.60 0.20 30);
-  --sidebar: oklch(0.20 0.04 145);
-  --sidebar-foreground: oklch(0.92 0 0);
-  --sidebar-primary: oklch(0.55 0.14 145);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.26 0.04 145);
-  --sidebar-accent-foreground: oklch(0.92 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #f6f7f4;
+  --foreground: #24332d;
+  --card: #ffffff;
+  --card-foreground: #24332d;
+  --popover: #ffffff;
+  --popover-foreground: #24332d;
+  --primary: #285d46;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf0eb;
+  --secondary-foreground: #304c3d;
+  --muted: #eef0ec;
+  --muted-foreground: #657168;
+  --accent: #e7eee8;
+  --accent-foreground: #254e39;
+  --destructive: #b53939;
+  --border: #dfe5dd;
+  --input: #cbd4c9;
+  --ring: #397052;
+  --chart-1: #758bb0;
+  --chart-2: #46775a;
+  --chart-3: #b38b49;
+  --chart-4: #8d7aa6;
+  --chart-5: #498c8a;
+  --status-success: #397251;
+  --status-neutral: #667b87;
+  --status-warning: #a56a22;
+  --status-critical: #bd4b45;
+  --sidebar: #eef1ec;
+  --sidebar-foreground: #35463b;
+  --sidebar-muted-foreground: #627064;
+  --sidebar-primary: #285d46;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #dce8dd;
+  --sidebar-accent-foreground: #254e39;
+  --sidebar-border: #dce2d9;
+  --sidebar-ring: #397052;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.60 0.14 145);
-  --primary-foreground: oklch(0.15 0.04 145);
-  --secondary: oklch(0.25 0.03 145);
-  --secondary-foreground: oklch(0.90 0 0);
-  --muted: oklch(0.25 0.02 145);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.28 0.04 145);
-  --accent-foreground: oklch(0.90 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.55 0.14 145);
-  --chart-1: oklch(0.60 0.15 145);
-  --chart-2: oklch(0.70 0.15 160);
-  --chart-3: oklch(0.55 0.10 200);
-  --chart-4: oklch(0.75 0.15 85);
-  --chart-5: oklch(0.65 0.20 30);
-  --sidebar: oklch(0.16 0.04 145);
-  --sidebar-foreground: oklch(0.90 0 0);
-  --sidebar-primary: oklch(0.60 0.14 145);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.22 0.04 145);
-  --sidebar-accent-foreground: oklch(0.90 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  color-scheme: dark;
+  --background: #161d19;
+  --foreground: #e5eae4;
+  --card: #1d2620;
+  --card-foreground: #e5eae4;
+  --popover: #222c25;
+  --popover-foreground: #e5eae4;
+  --primary: #a1c7aa;
+  --primary-foreground: #172e1e;
+  --secondary: #2a372e;
+  --secondary-foreground: #c9dece;
+  --muted: #27312a;
+  --muted-foreground: #a2afa4;
+  --accent: #304134;
+  --accent-foreground: #d6e8d9;
+  --destructive: #ef9290;
+  --border: #354137;
+  --input: #465649;
+  --ring: #a1c7aa;
+  --chart-1: #9fafd0;
+  --chart-2: #8fbaa0;
+  --chart-3: #d4b078;
+  --chart-4: #bca7d1;
+  --chart-5: #83bdb9;
+  --status-success: #9acba7;
+  --status-neutral: #a9bfc9;
+  --status-warning: #e3b573;
+  --status-critical: #ef9290;
+  --sidebar: #19221c;
+  --sidebar-foreground: #d5dfd3;
+  --sidebar-muted-foreground: #a2b09f;
+  --sidebar-primary: #a1c7aa;
+  --sidebar-primary-foreground: #172e1e;
+  --sidebar-accent: #304134;
+  --sidebar-accent-foreground: #e0eee0;
+  --sidebar-border: #354137;
+  --sidebar-ring: #a1c7aa;
 }
 
 @layer base {
@@ -121,7 +133,9 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
@@ -158,3 +172,28 @@
   --animate-marquee-vertical-reverse: marquee-vertical var(--duration) linear infinite reverse;
   --animate-border-beam: border-beam var(--duration) linear infinite;
 }
+/* Intrinsic sizing belongs to each layout region; data tables keep their own scroll. */
+.workspace-content > *, .workspace-content [data-slot="tabs-content"],
+.workspace-content [data-slot="card-content"], .workspace-content .recharts-responsive-container {
+  min-width: 0;
+}
+.workspace-content [data-slot="tabs-list"] { max-width: 100%; overflow-x: auto; justify-content: flex-start; }
+.workspace-content [data-slot="tabs-trigger"] { flex-shrink: 0; }
+.workspace-content [data-slot="table-container"] { overscroll-behavior-x: contain; }
+.workspace-content h2, .workspace-content h3 { text-wrap: balance; }
+.workspace-content .font-mono { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Charts inherit theme surfaces and readable label colors in both modes. */
+.workspace-content .recharts-cartesian-axis-tick-value { fill: var(--muted-foreground); }
+.workspace-content .recharts-cartesian-grid line { stroke: var(--border); }
+.workspace-content .recharts-default-tooltip {
+  background-color: var(--popover) !important;
+  border-color: var(--border) !important;
+  color: var(--popover-foreground) !important;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.workspace-content .recharts-tooltip-label { color: var(--popover-foreground); }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge, HealthBadge, StageBadge } from "@/components/status-badge";
 import { VESSEL_STATUS_LABELS, HEALTH_STATUS_LABELS, STAGE_LABELS } from "@/lib/constants";
@@ -33,6 +34,8 @@ export default function VesselsPage() {
   const [healthFilter, setHealthFilter] = useState("all");
   const [stageFilter, setStageFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const requestRef = useRef(0);
   const [mediaPrepCount, setMediaPrepCount] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -41,7 +44,9 @@ export default function VesselsPage() {
   const [batchLoading, setBatchLoading] = useState(false);
 
   const fetchVessels = useCallback(async () => {
+    const request = ++requestRef.current;
     setLoading(true);
+    setLoadError(null);
     const params = new URLSearchParams({ page: String(page), limit: "50" });
     if (search) params.set("search", search);
     if (cultivarFilter !== "all") params.set("cultivarId", cultivarFilter);
@@ -57,12 +62,19 @@ export default function VesselsPage() {
       params.set("status", statusFilter);
     }
 
-    const res = await fetch(`/api/vessels?${params}`);
-    const data = await res.json();
-    setVessels(data.vessels);
-    setTotal(data.total);
-    if (data.mediaPrepCount !== undefined) setMediaPrepCount(data.mediaPrepCount);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/vessels?${params}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (request !== requestRef.current) return;
+      setVessels(data.vessels);
+      setTotal(data.total);
+      if (data.mediaPrepCount !== undefined) setMediaPrepCount(data.mediaPrepCount);
+    } catch {
+      if (request === requestRef.current) setLoadError("Vessels could not be loaded. Retry to see records for this view.");
+    } finally {
+      if (request === requestRef.current) setLoading(false);
+    }
   }, [page, search, tab, statusFilter, cultivarFilter, healthFilter, stageFilter]);
 
   useEffect(() => {
@@ -70,7 +82,7 @@ export default function VesselsPage() {
   }, [fetchVessels]);
 
   useEffect(() => {
-    fetch("/api/cultivars").then((r) => r.json()).then(setCultivars);
+    fetch("/api/cultivars").then((r) => { if (!r.ok) throw new Error(); return r.json(); }).then(setCultivars).catch(() => toast.error("Cultivar filters could not be loaded."));
   }, []);
 
   useEffect(() => {
@@ -80,9 +92,13 @@ export default function VesselsPage() {
   // Clear selection when filters/page change
   useEffect(() => {
     setSelected(new Set());
-  }, [page, tab, statusFilter, cultivarFilter, healthFilter, stageFilter]);
+  }, [page, search, tab, statusFilter, cultivarFilter, healthFilter, stageFilter]);
 
   const totalPages = Math.ceil(total / 50);
+  const hasFilters = !!search || cultivarFilter !== "all" || healthFilter !== "all" || stageFilter !== "all" || (tab === "all" && statusFilter !== "all");
+  const resetFilters = () => {
+    setSearch(""); setCultivarFilter("all"); setHealthFilter("all"); setStageFilter("all"); setStatusFilter("all"); setPage(1);
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -117,7 +133,9 @@ export default function VesselsPage() {
       const data = await res.json();
       if (res.ok) {
         toast.success(`${data.success} of ${data.total} vessels updated`);
-        setSelected(new Set());
+        const succeeded = new Set<string>((data.results || []).filter((row: { success: boolean }) => row.success).map((row: { id: string }) => row.id));
+        setSelected((previous) => new Set([...previous].filter((id) => !succeeded.has(id))));
+        if (data.failed) toast.error(`${data.failed} records could not be updated and remain selected. Review their status before retrying.`);
         fetchVessels();
       } else {
         toast.error(data.error || "Batch operation failed");
@@ -130,12 +148,12 @@ export default function VesselsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         title="Vessels"
-        description={tab === "media_prep" ? `${total} media-filled vessels` : `${total.toLocaleString()} vessels`}
+        description="Track cultures, inspect exceptions and act on selected records"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -146,12 +164,13 @@ export default function VesselsPage() {
             <Button
               variant="outline"
               size="sm"
+              disabled={loading || !!loadError || vessels.length === 0}
               onClick={() => {
                 const rows = vessels.map((v) => flattenVesselForExport(v as unknown as Record<string, unknown>));
                 exportToCSV(rows, "vessels-export");
               }}
             >
-              Export CSV
+              Export page CSV
             </Button>
             <Link href="/scan">
               <Button>Scan New</Button>
@@ -161,7 +180,7 @@ export default function VesselsPage() {
       />
 
       {/* Tabs */}
-      <div className="flex rounded-lg bg-muted p-1 w-fit">
+      <div className="flex flex-wrap rounded-lg bg-muted p-1 w-fit max-w-full" aria-label="Vessel view">
         {([
           { key: "active" as Tab, label: "Active" },
           { key: "media_prep" as Tab, label: `Media Prep${mediaPrepCount > 0 ? ` (${mediaPrepCount})` : ""}` },
@@ -169,6 +188,7 @@ export default function VesselsPage() {
         ]).map((t) => (
           <button
             key={t.key}
+            aria-pressed={tab === t.key}
             onClick={() => setTab(t.key)}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
               tab === t.key
@@ -182,17 +202,17 @@ export default function VesselsPage() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className={`grid grid-cols-2 ${tab === "all" ? "md:grid-cols-5" : "md:grid-cols-4"} gap-3`}>
+      <section aria-label="Filter vessels" className="rounded-lg border bg-card p-4">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${tab === "all" ? "md:grid-cols-5" : "md:grid-cols-4"} gap-3`}>
             <Input
+              aria-label="Search barcode"
               placeholder="Search barcode..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             {tab === "all" && (
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Status" className="w-full min-w-0">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -204,7 +224,7 @@ export default function VesselsPage() {
               </Select>
             )}
             <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger>
+              <SelectTrigger aria-label="Stage" className="w-full min-w-0">
                 <SelectValue placeholder="Stage" />
               </SelectTrigger>
               <SelectContent>
@@ -215,7 +235,7 @@ export default function VesselsPage() {
               </SelectContent>
             </Select>
             <Select value={cultivarFilter} onValueChange={setCultivarFilter}>
-              <SelectTrigger>
+              <SelectTrigger aria-label="Cultivar" className="w-full min-w-0">
                 <SelectValue placeholder="Cultivar" />
               </SelectTrigger>
               <SelectContent>
@@ -226,7 +246,7 @@ export default function VesselsPage() {
               </SelectContent>
             </Select>
             <Select value={healthFilter} onValueChange={setHealthFilter}>
-              <SelectTrigger>
+              <SelectTrigger aria-label="Health" className="w-full min-w-0">
                 <SelectValue placeholder="Health" />
               </SelectTrigger>
               <SelectContent>
@@ -237,18 +257,21 @@ export default function VesselsPage() {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p role="status" className="text-xs text-muted-foreground">{loading ? "Loading records…" : loadError ? "Records unavailable" : `Showing ${vessels.length} of ${total.toLocaleString()} matching vessels. CSV exports this page only (up to 50 rows).`}</p>
+            {hasFilters && <Button variant="ghost" size="sm" onClick={resetFilters}>Reset filters</Button>}
+          </div>
+      </section>
 
       {/* Batch Action Bar */}
       {selected.size > 0 && (
-        <div className="sticky top-0 z-10 flex items-center gap-3 bg-primary text-primary-foreground rounded-lg px-4 py-2.5 shadow-lg">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border bg-card text-foreground rounded-lg px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium">{selected.size} selected</span>
-          <div className="flex-1" />
+          <div className="min-w-0 flex-1" />
           <Button
             size="sm"
             variant="secondary"
-            disabled={batchLoading}
+            disabled={batchLoading || loading}
             onClick={() => handleBatchAction("advance_stage")}
           >
             <ArrowUp className="size-3.5 mr-1.5" /> Advance Stage
@@ -256,7 +279,7 @@ export default function VesselsPage() {
           <Button
             size="sm"
             variant="secondary"
-            disabled={batchLoading}
+            disabled={batchLoading || loading}
             onClick={() => handleBatchAction("health_check", { healthStatus: "healthy" })}
           >
             <Heart className="size-3.5 mr-1.5" /> Mark Healthy
@@ -265,7 +288,7 @@ export default function VesselsPage() {
             size="sm"
             variant="secondary"
             className="text-red-600"
-            disabled={batchLoading}
+            disabled={batchLoading || loading}
             onClick={() => {
               if (confirm(`Dispose ${selected.size} vessels? This cannot be undone.`)) {
                 handleBatchAction("dispose", { reason: "Batch disposal from vessel list" });
@@ -277,7 +300,8 @@ export default function VesselsPage() {
           <Button
             size="icon"
             variant="ghost"
-            className="size-7 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+            aria-label="Clear selection"
+            className="size-9 text-muted-foreground"
             onClick={() => setSelected(new Set())}
           >
             <X className="size-4" />
@@ -286,17 +310,17 @@ export default function VesselsPage() {
       )}
 
       {/* Table */}
-      {loading ? (
+      {loadError ? <PageError message={loadError} retry={fetchVessels} /> : loading ? (
         <p className="text-center text-muted-foreground py-8">Loading...</p>
       ) : vessels.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center space-y-3">
-            <p className="text-lg font-medium">No vessels found</p>
+            <p className="text-lg font-medium">{hasFilters ? "No vessels match these filters" : `No vessels in ${tab === "media_prep" ? "Media Prep" : tab === "active" ? "Active" : "this view"}`}</p>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Vessels are the core of your lab — each one tracks a jar from initiation through hardening.
-              Scan a barcode or import a CSV to get started.
+              {hasFilters ? "Clear or change the filters to see more records." : "Scan a barcode or import vessels to begin tracking cultures. Switch views to see other lifecycle statuses."}
             </p>
-            <div className="flex justify-center gap-2 pt-2">
+            <div className="flex flex-wrap justify-center gap-2 pt-2">
+              {hasFilters && <Button variant="outline" size="sm" onClick={resetFilters}>Reset filters</Button>}
               <Button asChild size="sm">
                 <Link href="/scan">Scan First Vessel</Link>
               </Button>
@@ -371,15 +395,15 @@ export default function VesselsPage() {
                   className="mt-4"
                   aria-label={`Select ${v.barcode}`}
                 />
-                <Link href={`/vessels/${v.id}`} className="flex-1">
+                <Link href={`/vessels/${v.id}`} className="min-w-0 flex-1">
                   <Card className={`hover:bg-accent/50 transition-colors ${selected.has(v.id) ? "bg-primary/5" : ""}`}>
                     <CardContent className="pt-4 pb-3">
-                      <div className="flex items-start justify-between">
+                      <div className="flex flex-col items-start gap-3">
                         <div>
-                          <p className="font-mono font-medium">{v.barcode}</p>
+                          <p className="font-mono font-medium break-all">{v.barcode}</p>
                           <p className="text-sm text-muted-foreground">{v.cultivar?.name || "No cultivar"}</p>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex flex-wrap gap-1">
                           <StageBadge stage={v.stage} />
                           <StatusBadge status={v.status} />
                           <HealthBadge status={v.healthStatus} />
@@ -398,11 +422,11 @@ export default function VesselsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
                 Page {page} of {totalPages}
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
                   Previous
                 </Button>

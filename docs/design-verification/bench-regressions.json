@@ -1,0 +1,37 @@
+{
+  "checks": [
+    {
+      "name": "unsupported Code128 renders a recovery message",
+      "passed": true
+    },
+    {
+      "name": "QR preview recovers for Unicode barcode",
+      "passed": true
+    },
+    {
+      "name": "create partial failure keeps failed queue",
+      "passed": true
+    },
+    {
+      "name": "create retry does not resend successful vessel",
+      "passed": true
+    },
+    {
+      "name": "failed multiplication group resumes and replaces child",
+      "passed": true
+    },
+    {
+      "name": "setup location controls lock while saving",
+      "passed": true
+    },
+    {
+      "name": "failed location stays editable on same step",
+      "passed": true
+    },
+    {
+      "name": "bench regressions have no page errors",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

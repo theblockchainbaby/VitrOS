@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Send, Bot, User, Loader2, Sparkles } from "lucide-react";
-import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 
 interface Message {
@@ -28,6 +27,7 @@ export default function AssistantPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -37,15 +37,16 @@ export default function AssistantPage() {
     }
   }, [messages]);
 
-  async function handleSubmit(text?: string) {
-    const message = text || input.trim();
+  async function handleSubmit(text?: string, retry = false) {
+    const message = retry ? messages[messages.length - 1]?.content : text || input.trim();
     if (!message || loading) return;
 
     const userMessage: Message = { role: "user", content: message };
-    const newMessages = [...messages, userMessage];
+    const newMessages = retry ? messages : [...messages, userMessage];
     setMessages(newMessages);
-    setInput("");
+    if (!retry) setInput("");
     setLoading(true);
+    setError("");
 
     try {
       const res = await fetch("/api/assistant", {
@@ -67,7 +68,7 @@ export default function AssistantPage() {
         { role: "assistant", content: data.response, toolsUsed: data.toolsUsed },
       ]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : "The assistant could not respond. Please try again.");
       setMessages(newMessages);
     } finally {
       setLoading(false);
@@ -76,22 +77,22 @@ export default function AssistantPage() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSubmit();
     }
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex min-h-[36rem] h-[calc(100dvh-8rem)] flex-col gap-6 min-w-0">
       <PageHeader
         title="Lab Assistant"
         description="Ask questions about your lab data in plain English"
       />
 
-      <Card className="flex-1 flex flex-col mx-4 mb-4 overflow-hidden">
+      <Card className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden py-0 gap-0">
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div ref={scrollRef} role="log" aria-label="Conversation" aria-live="polite" aria-busy={loading} className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-5">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="rounded-full bg-primary/10 p-4 mb-4">
@@ -107,7 +108,7 @@ export default function AssistantPage() {
                   <button
                     key={s}
                     onClick={() => handleSubmit(s)}
-                    className="text-left text-sm px-3 py-2 rounded-lg border hover:bg-muted transition-colors"
+                    className="text-left text-sm px-3 py-3 rounded-lg border hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-ring"
                   >
                     {s}
                   </button>
@@ -126,18 +127,18 @@ export default function AssistantPage() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                  className={`min-w-0 max-w-[90%] sm:max-w-[80%] rounded-lg px-4 py-3 ${
                     m.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted"
                   }`}
                 >
-                  <div className="text-sm whitespace-pre-wrap">{m.content}</div>
+                  <div className="text-sm whitespace-pre-wrap leading-relaxed break-words">{m.content}</div>
                   {m.toolsUsed && m.toolsUsed.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {m.toolsUsed.map((t) => (
                         <Badge key={t} variant="secondary" className="text-xs">
-                          {t.replace("query_", "")}
+                          {({ query_vessels: "Vessels", query_cultivars: "Cultivars", query_contamination: "Contamination", query_tech_performance: "Team performance", query_clone_lines: "Clone lines", query_sales_orders: "Sales orders", query_forecasting: "Forecast", query_demand_planning: "Demand planning", query_inventory: "Inventory", query_locations: "Locations", query_media: "Media" } as Record<string, string>)[t] || "Lab records"}
                         </Badge>
                       ))}
                     </div>
@@ -166,11 +167,13 @@ export default function AssistantPage() {
           )}
         </div>
 
+        {error && <div role="alert" className="mx-4 mb-4 rounded-lg border border-destructive/30 p-3 text-sm"><p>{error}</p><Button variant="outline" size="sm" className="mt-2" disabled={loading} onClick={() => handleSubmit(undefined, true)}>Retry response</Button></div>}
         {/* Input */}
         <div className="border-t p-4">
           <div className="flex gap-2">
             <Textarea
               ref={inputRef}
+              aria-label="Message to the lab assistant"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -183,6 +186,7 @@ export default function AssistantPage() {
               onClick={() => handleSubmit()}
               disabled={!input.trim() || loading}
               size="icon"
+              aria-label={loading ? "Waiting for response" : "Send message"}
               className="shrink-0 h-[44px] w-[44px]"
             >
               {loading ? (
@@ -192,6 +196,7 @@ export default function AssistantPage() {
               )}
             </Button>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">Enter to send · Shift + Enter for a new line. Verify important counts against the source records.</p>
         </div>
       </Card>
     </div>

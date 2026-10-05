@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toast } from "sonner";
+import { failedRowsCsv } from "./failed-rows";
 
 interface ParsedRow {
   barcode: string;
@@ -32,6 +33,8 @@ export default function ImportPage() {
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState<ImportResult[] | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [attempts, setAttempts] = useState<ImportResult[][]>([]);
+  const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,6 +50,8 @@ export default function ImportPage() {
   };
 
   const parsePreview = (text: string) => {
+    setParsed([]); setResults(null); setError("");
+    if (text.includes('"')) { setError("Quoted fields are not supported by this importer. Remove commas and line breaks inside values before continuing."); return; }
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
     if (lines.length < 2) {
       toast.error("CSV needs a header row and at least one data row");
@@ -83,6 +88,9 @@ export default function ImportPage() {
       if (row.barcode) rows.push(row as unknown as ParsedRow);
     }
 
+    if (rows.length > 2000) { setError("Split this file into batches of no more than 2,000 vessels."); return; }
+    if (new Set(rows.map((row) => row.barcode)).size !== rows.length) { setError("Resolve duplicate barcodes before importing."); return; }
+    if (rows.length !== lines.length - 1) { setError("Every data row needs a barcode. Fix missing barcodes before importing."); return; }
     setParsed(rows);
     setResults(null);
     if (rows.length === 0) {
@@ -96,6 +104,7 @@ export default function ImportPage() {
     setConfirmOpen(false);
     if (!csvText || parsed.length === 0) return;
     setImporting(true);
+    setError("");
     try {
       const res = await fetch("/api/vessels/import", {
         method: "POST",
@@ -105,15 +114,18 @@ export default function ImportPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Import failed");
+        setError(data.error || "Import failed. Your input has been preserved.");
         return;
       }
 
       setResults(data.results);
+      setAttempts((previous) => [...previous, data.results]);
       toast.success(`Imported ${data.created} of ${data.total} vessels`);
       if (data.failed > 0) {
         toast.error(`${data.failed} vessels failed to import`);
       }
+    } catch {
+      setError("The import response was interrupted. Your input is preserved. Check the vessel list before retrying, since some rows may have been created.");
     } finally {
       setImporting(false);
     }
@@ -123,7 +135,20 @@ export default function ImportPage() {
     setCsvText("");
     setParsed([]);
     setResults(null);
+    setAttempts([]); setError("");
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const prepareFailedRows = () => {
+    if (!results) return;
+    const failed = new Set(results.filter((result) => !result.success).map((result) => result.barcode));
+    const retryCsv = failedRowsCsv(csvText, failed);
+    if (retryCsv.split("\n").length < 2) {
+      setError("Could not match the failed rows to this CSV. The original input and results have been preserved.");
+      return;
+    }
+    setCsvText(retryCsv);
+    parsePreview(retryCsv);
   };
 
   const downloadTemplate = () => {
@@ -149,6 +174,9 @@ export default function ImportPage() {
         }
       />
 
+      <ol className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground" aria-label="Import steps"><li>1. Upload</li><li>2. Validate & review</li><li>3. Import</li><li>4. Resolve results</li></ol>
+      {error && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
+      {attempts.length > 0 && <p role="status" className="text-sm text-muted-foreground">{attempts.flat().filter((result) => result.success).length} vessels created across {attempts.length} completed attempt{attempts.length === 1 ? "" : "s"}. Failed rows remain available for correction.</p>}
       {/* Upload */}
       <Card>
         <CardHeader>
@@ -158,7 +186,7 @@ export default function ImportPage() {
           <div>
             <input
               ref={fileRef}
-              type="file"
+              type="file" aria-label="Upload vessel CSV" disabled={importing}
               accept=".csv,text/csv"
               onChange={handleFileUpload}
               className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer"
@@ -169,17 +197,18 @@ export default function ImportPage() {
           </div>
           <Textarea
             value={csvText}
-            onChange={(e) => setCsvText(e.target.value)}
+            onChange={(e) => { setCsvText(e.target.value); setParsed([]); setResults(null); }}
+            aria-label="CSV data" disabled={importing}
             placeholder={"barcode,cultivar,stage,explant_count\nTC0001,Spathiphyllum,initiation,5"}
             rows={6}
             className="font-mono text-xs"
           />
           <div className="flex gap-2">
-            <Button onClick={() => parsePreview(csvText)} disabled={!csvText.trim()}>
+            <Button onClick={() => parsePreview(csvText)} disabled={importing || !csvText.trim()}>
               Preview
             </Button>
             {parsed.length > 0 && (
-              <Button variant="outline" onClick={handleReset}>
+              <Button variant="outline" onClick={handleReset} disabled={importing}>
                 Clear
               </Button>
             )}
@@ -197,7 +226,7 @@ export default function ImportPage() {
       {parsed.length > 0 && !results && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-base">Preview ({parsed.length} vessels)</CardTitle>
               <Button onClick={() => setConfirmOpen(true)} disabled={importing}>
                 {importing ? "Importing..." : `Import ${parsed.length} Vessels`}
@@ -246,9 +275,9 @@ export default function ImportPage() {
       {results && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-base">Import Results</CardTitle>
-              <Button variant="outline" onClick={handleReset}>
+              <Button variant="outline" onClick={handleReset} disabled={importing}>
                 Import More
               </Button>
             </div>
@@ -264,6 +293,7 @@ export default function ImportPage() {
                 <p className="text-xs text-muted-foreground">Failed</p>
               </div>
             </div>
+            {results.some((r) => !r.success) && <Button className="mb-4" variant="outline" onClick={prepareFailedRows}>Review failed rows only</Button>}
             {results.some((r) => !r.success) && (
               <Table>
                 <TableHeader>

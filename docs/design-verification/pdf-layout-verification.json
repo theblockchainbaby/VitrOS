@@ -1,0 +1,29 @@
+[
+  {
+    "fixture": "vessel-report-long-rows.pdf",
+    "pages": 7,
+    "expected_records_or_note_segments": 72,
+    "all_markers_present": true,
+    "table_headings_and_numbered_footers_on_every_page": true,
+    "off_page_words": 0,
+    "minimum_body_footer_gap_pt": 45.48
+  },
+  {
+    "fixture": "activity-report-long-rows.pdf",
+    "pages": 7,
+    "expected_records_or_note_segments": 44,
+    "all_markers_present": true,
+    "table_headings_and_numbered_footers_on_every_page": true,
+    "off_page_words": 0,
+    "minimum_body_footer_gap_pt": 30.88
+  },
+  {
+    "fixture": "activity-report-long-note.pdf",
+    "pages": 3,
+    "expected_records_or_note_segments": 60,
+    "all_markers_present": true,
+    "table_headings_and_numbered_footers_on_every_page": true,
+    "off_page_words": 0,
+    "minimum_body_footer_gap_pt": 83.28
+  }
+]

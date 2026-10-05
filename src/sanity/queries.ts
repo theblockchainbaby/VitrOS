@@ -1,5 +1,5 @@
-import { sanityClient } from './client'
-import { PortableTextBlock } from 'next-sanity'
+import { getSanityClient } from './client'
+import type { PortableTextBlock } from 'next-sanity'
 
 export interface SanityPost {
   _id: string
@@ -13,7 +13,7 @@ export interface SanityPost {
 }
 
 export async function getAllPosts(): Promise<SanityPost[]> {
-  return sanityClient.fetch(
+  return getSanityClient().fetch(
     `*[_type == "post"] | order(publishedAt desc) {
       _id,
       title,
@@ -27,7 +27,7 @@ export async function getAllPosts(): Promise<SanityPost[]> {
 }
 
 export async function getPostBySlug(slug: string): Promise<SanityPost | null> {
-  return sanityClient.fetch(
+  return getSanityClient().fetch(
     `*[_type == "post" && slug.current == $slug][0] {
       _id,
       title,
@@ -43,7 +43,7 @@ export async function getPostBySlug(slug: string): Promise<SanityPost | null> {
 }
 
 export async function getAllSlugs(): Promise<string[]> {
-  const posts = await sanityClient.fetch(
+  const posts = await getSanityClient().fetch(
     `*[_type == "post"]{ "slug": slug.current }`
   )
   return posts.map((p: { slug: string }) => p.slug)

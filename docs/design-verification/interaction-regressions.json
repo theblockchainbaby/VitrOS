@@ -1,0 +1,50 @@
+[
+  {
+    "name": "label selection toggles once",
+    "passed": true
+  },
+  {
+    "name": "label selection supports keyboard",
+    "passed": true
+  },
+  {
+    "name": "Activity CSV quick action requests activity data",
+    "passed": true
+  },
+  {
+    "name": "one critical vessel among 1000 never says All Clear",
+    "passed": true
+  },
+  {
+    "name": "lookup failure retains barcode",
+    "passed": true
+  },
+  {
+    "name": "save keeps form visible and values intact",
+    "passed": true
+  },
+  {
+    "name": "save failure keeps edit for retry",
+    "passed": true
+  },
+  {
+    "name": "partial batch leaves one failed record selected",
+    "passed": true
+  },
+  {
+    "name": "batch retry submits only failed id",
+    "passed": true
+  },
+  {
+    "name": "sidebar group is a keyboard disclosure",
+    "passed": true
+  },
+  {
+    "name": "collapsed sidebar preserves planning destinations",
+    "passed": true
+  },
+  {
+    "name": "billing mobile navigation opens",
+    "passed": true
+  }
+]

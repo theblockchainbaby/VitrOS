@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge, HealthBadge, StageBadge } from "@/components/status-badge";
 import { LOCATION_TYPE_LABELS } from "@/lib/constants";
@@ -24,17 +25,20 @@ export default function LocationDetailPage({ params }: { params: Promise<{ id: s
   const router = useRouter();
   const [location, setLocation] = useState<LocationDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchLocation = useCallback(() => {
     fetch(`/api/locations/${id}`)
       .then((r) => {
-        if (!r.ok) throw new Error();
+        if (!r.ok) throw new Error(r.status === 404 ? "Location not found." : "Location could not be loaded. Try again.");
         return r.json();
       })
-      .then(setLocation)
-      .catch(() => setLocation(null))
+      .then((data) => { setLocation(data); setLoadError(null); })
+      .catch((error) => setLoadError(error instanceof Error ? error.message : "Location could not be loaded. Try again."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { fetchLocation(); }, [fetchLocation]);
 
   const handleDelete = async () => {
     if (!confirm("Deactivate this location?")) return;
@@ -47,6 +51,7 @@ export default function LocationDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  if (loadError) return <PageError message={loadError} retry={() => { setLoading(true); setLoadError(null); fetchLocation(); }} />;
   if (loading) return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
   if (!location) return <div className="text-center py-12 text-muted-foreground">Location not found</div>;
 
@@ -54,14 +59,13 @@ export default function LocationDetailPage({ params }: { params: Promise<{ id: s
   const capacityPct = location.capacity ? Math.round((vesselCount / location.capacity) * 100) : null;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="min-w-0 space-y-6 max-w-5xl mx-auto">
       <PageHeader
         title={location.name}
         description={LOCATION_TYPE_LABELS[location.type] || location.type}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{vesselCount} vessels</Badge>
-            <Button variant="outline" size="sm" onClick={handleDelete}>Deactivate</Button>
           </div>
         }
       />
@@ -72,7 +76,7 @@ export default function LocationDetailPage({ params }: { params: Promise<{ id: s
           <CardTitle className="text-base">Location Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm [&>*]:min-w-0 [&>*]:break-words">
             <span className="text-muted-foreground">Type</span>
             <Badge variant="outline">{LOCATION_TYPE_LABELS[location.type] || location.type}</Badge>
             <span className="text-muted-foreground">Site</span>
@@ -103,7 +107,7 @@ export default function LocationDetailPage({ params }: { params: Promise<{ id: s
           {location.conditions && Object.keys(location.conditions).length > 0 && (
             <div className="mt-4 pt-4 border-t">
               <p className="text-sm font-medium mb-2">Target Conditions</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                 {location.conditions.temperature !== undefined && (
                   <div className="text-center p-2 bg-muted/50 rounded-md">
                     <p className="text-lg font-mono">{location.conditions.temperature}°C</p>
@@ -128,6 +132,8 @@ export default function LocationDetailPage({ params }: { params: Promise<{ id: s
         </CardContent>
       </Card>
 
+      {location.vessels?.length === 0 && <p className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">No vessels are assigned directly to this location. Open a sub-location to inspect its records or use Move on a vessel to assign it here.</p>}
+
       {/* Sub-locations */}
       {location.children && location.children.length > 0 && (
         <Card>
@@ -135,7 +141,7 @@ export default function LocationDetailPage({ params }: { params: Promise<{ id: s
             <CardTitle className="text-base">Sub-locations ({location.children.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 [&>*]:min-w-0 [&>*]:break-words">
               {location.children.map((child) => (
                 <Link
                   key={child.id}
@@ -189,6 +195,10 @@ export default function LocationDetailPage({ params }: { params: Promise<{ id: s
           </CardContent>
         </Card>
       )}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+        <Button variant="outline" size="sm" asChild><Link href="/locations">Back to locations</Link></Button>
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleDelete}>Deactivate record</Button>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PageError } from "@/components/page-state";
+import { BatchResults, type BatchResult } from "@/components/batch-results";
 import { PageHeader } from "@/components/page-header";
 import type { MediaBatch, MediaRecipe } from "@/lib/types";
 import { format } from "date-fns";
@@ -19,6 +22,7 @@ export default function MediaBatchesPage() {
   const [batches, setBatches] = useState<MediaBatch[]>([]);
   const [recipes, setRecipes] = useState<MediaRecipe[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [recipeFilter, setRecipeFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -29,6 +33,7 @@ export default function MediaBatchesPage() {
   const [volumeL, setVolumeL] = useState("");
   const [vesselCount, setVesselCount] = useState("");
   const [measuredPH, setMeasuredPH] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
   const [autoclaved, setAutoclaved] = useState(false);
   const [notes, setNotes] = useState("");
 
@@ -38,15 +43,25 @@ export default function MediaBatchesPage() {
   const [pourBarcode, setPourBarcode] = useState("");
   const [pourBarcodes, setPourBarcodes] = useState<string[]>([]);
   const [pouring, setPouring] = useState(false);
+  const [pourResult, setPourResult] = useState<BatchResult | null>(null);
+  const [pourError, setPourError] = useState<string | null>(null);
 
   const fetchBatches = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (recipeFilter !== "all") params.set("recipeId", recipeFilter);
+    setLoadError(null);
+    try {
     const res = await fetch(`/api/media-batches?${params}`);
+    if (!res.ok) throw new Error();
     const data = await res.json();
     setBatches(data);
-    setLoading(false);
+
+    } catch {
+      setLoadError("Media batches could not be loaded. Retry to see this view.");
+    } finally {
+      setLoading(false);
+    }
   }, [recipeFilter]);
 
   useEffect(() => {
@@ -71,6 +86,7 @@ export default function MediaBatchesPage() {
         vesselCount: parseInt(vesselCount),
         autoclaved,
       };
+      if (expiresAt) body.expiresAt = new Date(expiresAt).toISOString();
       if (measuredPH) body.measuredPH = parseFloat(measuredPH);
       if (notes) body.notes = notes;
 
@@ -88,6 +104,7 @@ export default function MediaBatchesPage() {
         setVolumeL("");
         setVesselCount("");
         setMeasuredPH("");
+        setExpiresAt("");
         setAutoclaved(false);
         setNotes("");
         fetchBatches();
@@ -95,21 +112,28 @@ export default function MediaBatchesPage() {
         const err = await res.json();
         toast.error(err.error || "Failed to create batch");
       }
+    } catch {
+      toast.error("The save could not be confirmed. Your entries have been kept.");
     } finally {
       setCreating(false);
     }
   };
 
   const openPourDialog = (batch: MediaBatch) => {
+    if (pourBatch?.id !== batch.id) {
+      if (pourBarcodes.length > 0 && !confirm("Discard the queued barcodes and start a pour for this batch?")) return;
+      setPourBarcodes([]);
+      setPourBarcode("");
+      setPourError(null);
+      setPourResult(null);
+    }
     setPourBatch(batch);
-    setPourBarcodes([]);
-    setPourBarcode("");
     setPourDialogOpen(true);
   };
 
   const addPourBarcode = () => {
     const code = pourBarcode.trim();
-    if (!code) return;
+    if (!code || pouring) return;
     if (pourBarcodes.includes(code)) {
       toast.error("Barcode already added");
       return;
@@ -123,7 +147,9 @@ export default function MediaBatchesPage() {
   };
 
   const handlePour = async () => {
-    if (!pourBatch || pourBarcodes.length === 0) return;
+    if (!pourBatch || pourBarcodes.length === 0 || pouring) return;
+    setPourError(null);
+    setPourResult(null);
     setPouring(true);
     try {
       const res = await fetch(`/api/media-batches/${pourBatch.id}/pour`, {
@@ -133,21 +159,34 @@ export default function MediaBatchesPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        toast.success(`Poured into ${data.created + data.updated} vessels (${data.created} new, ${data.updated} updated)`);
-        setPourDialogOpen(false);
-        setPourBatch(null);
-        setPourBarcodes([]);
+        const completed = new Set<string>((data.results || []).filter((row: { status: string }) => row.status === "created" || row.status === "updated").map((row: { barcode: string }) => row.barcode));
+        const remaining = pourBarcodes.filter((barcode) => !completed.has(barcode));
+        setPourResult({
+          succeeded: completed.size,
+          total: pourBarcodes.length,
+          failures: remaining.map((barcode) => ({ barcode, error: data.results?.find((row: { barcode: string; status: string }) => row.barcode === barcode)?.status?.replace(/^error:?\s*/, "") || "Pour could not be confirmed. Check the vessel before retrying." })),
+        });
+        setPourBarcodes(remaining);
+        if (completed.size > 0) toast.success(`Poured into ${completed.size} vessels (${data.created} new, ${data.updated} updated)`);
+        if (remaining.length === 0) {
+          setPourDialogOpen(false);
+          setPourBatch(null);
+        } else {
+          toast.error(`${remaining.length} vessels remain in the pour queue`);
+        }
       } else {
         const err = await res.json();
-        toast.error(err.error || "Pour failed");
+        setPourError(err.error || "Pour failed. Your queue has been kept.");
       }
+    } catch {
+      setPourError("The pour could not be confirmed. Your queue has been kept. Check the vessels before retrying.");
     } finally {
       setPouring(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         title="Media Batches"
         description="Track prepared media batches"
@@ -162,9 +201,9 @@ export default function MediaBatchesPage() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Recipe</Label>
+                  <Label htmlFor="media-batches-field-1">Recipe</Label>
                   <Select value={recipeId} onValueChange={setRecipeId}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select recipe" /></SelectTrigger>
+                    <SelectTrigger id="media-batches-field-1" className="mt-1"><SelectValue placeholder="Select recipe" /></SelectTrigger>
                     <SelectContent>
                       {recipes.map((r) => (
                         <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
@@ -172,33 +211,34 @@ export default function MediaBatchesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Batch Number</Label>
-                    <Input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} placeholder="MB-2026-001" className="mt-1" />
+                    <Label htmlFor="media-batches-field-2">Batch Number</Label>
+                    <Input id="media-batches-field-2" value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} placeholder="MB-2026-001" className="mt-1" />
                   </div>
                   <div>
-                    <Label>Volume (L)</Label>
-                    <Input type="number" step="0.1" value={volumeL} onChange={(e) => setVolumeL(e.target.value)} className="mt-1" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Vessel Count</Label>
-                    <Input type="number" value={vesselCount} onChange={(e) => setVesselCount(e.target.value)} className="mt-1" />
-                  </div>
-                  <div>
-                    <Label>Measured pH</Label>
-                    <Input type="number" step="0.01" value={measuredPH} onChange={(e) => setMeasuredPH(e.target.value)} className="mt-1" />
+                    <Label htmlFor="media-batches-field-3">Volume (L)</Label>
+                    <Input id="media-batches-field-3" type="number" step="0.1" value={volumeL} onChange={(e) => setVolumeL(e.target.value)} className="mt-1" />
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
+                  <div>
+                    <Label htmlFor="media-batches-field-4">Vessel Count</Label>
+                    <Input id="media-batches-field-4" type="number" value={vesselCount} onChange={(e) => setVesselCount(e.target.value)} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="media-batches-field-5">Measured pH</Label>
+                    <Input id="media-batches-field-5" type="number" step="0.01" value={measuredPH} onChange={(e) => setMeasuredPH(e.target.value)} className="mt-1" />
+                  </div>
+                </div>
+                <div><Label htmlFor="batch-expiry">Expiry date (optional)</Label><Input id="batch-expiry" type="date" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} className="mt-1" /></div>
+                <div className="flex flex-wrap items-center gap-2">
                   <input type="checkbox" id="autoclaved" checked={autoclaved} onChange={(e) => setAutoclaved(e.target.checked)} />
                   <Label htmlFor="autoclaved">Autoclaved</Label>
                 </div>
                 <div>
-                  <Label>Notes</Label>
-                  <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1" />
+                  <Label htmlFor="media-batches-field-6">Notes</Label>
+                  <Input id="media-batches-field-6" value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1" />
                 </div>
                 <Button onClick={handleCreate} disabled={creating} className="w-full">
                   {creating ? "Saving..." : "Log Batch"}
@@ -209,11 +249,16 @@ export default function MediaBatchesPage() {
         }
       />
 
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="outline" asChild><Link href="/media">Media recipes</Link></Button>
+        {pourBatch && pourBarcodes.length > 0 && !pourDialogOpen && <Button variant="outline" onClick={() => setPourDialogOpen(true)}>Resume pour · {pourBarcodes.length} queued for {pourBatch.batchNumber}</Button>}
+      </div>
+      {!pourDialogOpen && <BatchResults result={pourResult} />}
       {/* Filter */}
       <Card>
         <CardContent className="pt-4">
           <Select value={recipeFilter} onValueChange={setRecipeFilter}>
-            <SelectTrigger className="w-64"><SelectValue placeholder="Filter by recipe" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-64" aria-label="Filter batches by recipe"><SelectValue placeholder="Filter by recipe" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Recipes</SelectItem>
               {recipes.map((r) => (
@@ -221,15 +266,17 @@ export default function MediaBatchesPage() {
               ))}
             </SelectContent>
           </Select>
+          {recipeFilter !== "all" && <Button variant="ghost" size="sm" className="mt-2" onClick={() => setRecipeFilter("all")}>Reset filter</Button>}
         </CardContent>
       </Card>
 
-      {loading ? (
+      {loadError ? <PageError message={loadError} retry={fetchBatches} /> : loading ? (
         <p className="text-center text-muted-foreground py-8">Loading...</p>
       ) : batches.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">No batches recorded yet</p>
+        <p className="text-center text-muted-foreground py-8">{recipeFilter !== "all" ? "No batches match this recipe. Reset the filter to see all batches." : "No batches recorded yet. Log a prepared batch to begin pouring vessels."}</p>
       ) : (
-        <div className="rounded-md border">
+        <>
+        <div className="hidden md:block rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -240,7 +287,7 @@ export default function MediaBatchesPage() {
                 <TableHead>pH</TableHead>
                 <TableHead>Autoclaved</TableHead>
                 <TableHead>Prepared By</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Prepared / expires</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
@@ -248,13 +295,13 @@ export default function MediaBatchesPage() {
               {batches.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell className="font-mono">{b.batchNumber}</TableCell>
-                  <TableCell>{b.recipe?.name ?? "—"}</TableCell>
+                  <TableCell>{b.recipe ? <Link href={`/media/${b.recipe.id}`} className="text-primary hover:underline">{b.recipe.name}</Link> : "—"}</TableCell>
                   <TableCell>{b.volumeL}</TableCell>
                   <TableCell className="font-mono">{b.vesselCount}</TableCell>
                   <TableCell>{b.measuredPH ?? "—"}</TableCell>
                   <TableCell>{b.autoclaved ? <Badge>Yes</Badge> : <Badge variant="outline">No</Badge>}</TableCell>
                   <TableCell>{b.preparedBy?.name ?? "—"}</TableCell>
-                  <TableCell>{format(new Date(b.createdAt), "MMM d, yyyy")}</TableCell>
+                  <TableCell>{format(new Date(b.createdAt), "MMM d, yyyy")}<span className={`block text-xs ${b.expiresAt && new Date(b.expiresAt) < new Date() ? "text-destructive" : "text-muted-foreground"}`}>{b.expiresAt ? `Expires ${format(new Date(b.expiresAt), "MMM d, yyyy")}` : "No expiry recorded"}</span></TableCell>
                   <TableCell>
                     <Button variant="outline" size="sm" onClick={() => openPourDialog(b)}>
                       <FlaskConical className="mr-1 size-3" />
@@ -266,11 +313,30 @@ export default function MediaBatchesPage() {
             </TableBody>
           </Table>
         </div>
+        <div className="space-y-3 md:hidden">
+          {batches.map((batch) => (
+            <Card key={batch.id}><CardContent className="pt-4 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0"><p className="font-mono font-medium break-all">{batch.batchNumber}</p>{batch.recipe && <Link href={`/media/${batch.recipe.id}`} className="text-sm text-primary hover:underline">{batch.recipe.name}</Link>}</div>
+                <Button variant="outline" className="min-h-11" onClick={() => openPourDialog(batch)}>Pour vessels</Button>
+              </div>
+              <dl className="grid grid-cols-2 gap-2 text-sm">
+                <div><dt className="text-muted-foreground">Volume</dt><dd>{batch.volumeL} L</dd></div>
+                <div><dt className="text-muted-foreground">Vessels</dt><dd>{batch.vesselCount}</dd></div>
+                <div><dt className="text-muted-foreground">Measured pH</dt><dd>{batch.measuredPH ?? "Not recorded"}</dd></div>
+                <div><dt className="text-muted-foreground">Autoclaved</dt><dd>{batch.autoclaved ? "Yes" : "No"}</dd></div>
+              </dl>
+              <p className="text-xs text-muted-foreground">Prepared {format(new Date(batch.createdAt), "MMM d, yyyy")} · {batch.preparedBy?.name || "Unknown operator"}</p>
+              <p className={`text-xs ${batch.expiresAt && new Date(batch.expiresAt) < new Date() ? "text-destructive" : "text-muted-foreground"}`}>{batch.expiresAt ? `Expires ${format(new Date(batch.expiresAt), "MMM d, yyyy")}` : "No expiry recorded"}</p>
+            </CardContent></Card>
+          ))}
+        </div>
+        </>
       )}
 
       {/* Pour Vessels Dialog */}
-      <Dialog open={pourDialogOpen} onOpenChange={setPourDialogOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={pourDialogOpen} onOpenChange={(open) => { if (!pouring) setPourDialogOpen(open); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Pour Vessels — {pourBatch?.batchNumber}</DialogTitle>
           </DialogHeader>
@@ -281,16 +347,18 @@ export default function MediaBatchesPage() {
           </p>
           <form
             onSubmit={(e) => { e.preventDefault(); addPourBarcode(); }}
-            className="flex gap-2"
+            className="flex flex-wrap gap-2"
           >
             <Input
               value={pourBarcode}
               onChange={(e) => setPourBarcode(e.target.value)}
               placeholder="Scan or type barcode..."
-              className="flex-1 text-lg h-12"
+              className="min-w-0 flex-1 font-mono text-lg h-12"
+              aria-label="Vessel barcode for pour"
+              disabled={pouring}
               autoFocus
             />
-            <Button type="submit" size="lg" disabled={!pourBarcode.trim()}>
+            <Button type="submit" size="lg" disabled={pouring || !pourBarcode.trim()}>
               Add
             </Button>
           </form>
@@ -302,7 +370,7 @@ export default function MediaBatchesPage() {
                 {pourBarcodes.map((code) => (
                   <Badge key={code} variant="secondary" className="font-mono text-sm py-1 px-2">
                     {code}
-                    <button onClick={() => removePourBarcode(code)} className="ml-1.5 hover:text-destructive">
+                    <button disabled={pouring} aria-label={`Remove ${code}`} onClick={() => removePourBarcode(code)} className="ml-1.5 hover:text-destructive">
                       <X className="size-3" />
                     </button>
                   </Badge>
@@ -311,6 +379,8 @@ export default function MediaBatchesPage() {
             </div>
           )}
 
+          <BatchResults result={pourResult} />
+          {pourError && <p role="alert" className="text-sm text-destructive">{pourError}</p>}
           <Button
             onClick={handlePour}
             disabled={pouring || pourBarcodes.length === 0}

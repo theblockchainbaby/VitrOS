@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PageLoading, PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { USER_ROLES, USER_ROLE_LABELS } from "@/lib/constants";
 import type { UserProfile } from "@/lib/types";
@@ -31,6 +33,10 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+  const [usersError, setUsersError] = useState("");
+  const [settingsError, setSettingsError] = useState("");
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
   // Org settings
   const [orgName, setOrgName] = useState("");
@@ -52,24 +58,29 @@ export default function AdminPage() {
   const [changingPw, setChangingPw] = useState(false);
 
   const fetchUsers = () => {
+    setLoading(true); setUsersError("");
     fetch("/api/users")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Team members could not be loaded."); return r.json(); })
       .then(setUsers)
+      .catch((err) => setUsersError(err.message))
       .finally(() => setLoading(false));
   };
 
   const fetchOrgSettings = () => {
+    setSettingsLoading(true); setSettingsError("");
     fetch("/api/settings")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Workspace settings could not be loaded."); return r.json(); })
       .then((data) => {
         setOrgName(data.name || "");
         setOrgPlan(data.plan || "pro");
         setSettings((data.settings as OrgSettings) || {});
       })
-      .catch(() => {});
+      .catch((err) => setSettingsError(err.message))
+      .finally(() => setSettingsLoading(false));
   };
 
   const saveOrgSettings = async () => {
+    if (savingSettings || settingsLoading || !!settingsError) return;
     setSavingSettings(true);
     try {
       const res = await fetch("/api/settings", {
@@ -83,6 +94,7 @@ export default function AdminPage() {
         const err = await res.json();
         toast.error(err.error || "Failed to save settings");
       }
+    } catch { toast.error("Settings were not saved. Please try again.");
     } finally {
       setSavingSettings(false);
     }
@@ -94,6 +106,7 @@ export default function AdminPage() {
   }, []);
 
   const handleCreate = async () => {
+    if (creating) return;
     if (!name || !email || !password) {
       toast.error("Name, email, and password are required");
       return;
@@ -122,24 +135,25 @@ export default function AdminPage() {
         const err = await res.json();
         toast.error(err.error || "Failed to create user");
       }
+    } catch { toast.error("User creation could not be confirmed. Check the team list before retrying.");
     } finally {
       setCreating(false);
     }
   };
 
   const toggleActive = async (userId: string, isActive: boolean) => {
-    const res = await fetch(`/api/users/${userId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !isActive }),
-    });
-    if (res.ok) {
-      toast.success(isActive ? "User deactivated" : "User activated");
-      fetchUsers();
-    }
+    if (updatingUser) return;
+    setUpdatingUser(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !isActive }) });
+      if (!res.ok) throw new Error("User status was not changed.");
+      toast.success(isActive ? "User deactivated" : "User activated"); fetchUsers();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Could not change user status."); }
+    finally { setUpdatingUser(null); }
   };
 
   const handleChangePassword = async () => {
+    if (changingPw) return;
     if (!currentPw || !newPw) {
       toast.error("Fill in current and new password");
       return;
@@ -168,54 +182,55 @@ export default function AdminPage() {
         const err = await res.json();
         toast.error(err.error || "Failed to change password");
       }
+    } catch { toast.error("Password change could not be confirmed. Please try again.");
     } finally {
       setChangingPw(false);
     }
   };
 
   const updateRole = async (userId: string, newRole: string) => {
-    const res = await fetch(`/api/users/${userId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: newRole }),
-    });
-    if (res.ok) {
-      toast.success("Role updated");
-      fetchUsers();
-    }
+    if (updatingUser) return;
+    setUpdatingUser(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: newRole }) });
+      if (!res.ok) throw new Error("Role was not changed.");
+      toast.success("Role updated"); fetchUsers();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Could not change this role."); }
+    finally { setUpdatingUser(null); }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Administration"
-        description="Manage users and organization settings"
+        title="Settings"
+        description="Manage your workspace, team and personal access"
         actions={
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { if (!creating) setDialogOpen(open); }}>
             <DialogTrigger asChild>
-              <Button>Invite User</Button>
+              <Button>Create User</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New User</DialogTitle>
+                <DialogTitle>Create a user account</DialogTitle>
+                <p className="text-sm text-muted-foreground">Creates an account immediately. No invitation email is sent; share access details with your teammate separately.</p>
               </DialogHeader>
-              <div className="space-y-4">
+              <fieldset disabled={creating} aria-busy={creating} className="space-y-4 min-w-0"><legend className="sr-only">New user details</legend>
                 <div>
-                  <Label>Full Name</Label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
+                  <Label htmlFor="settings-name">Full Name</Label>
+                  <Input id="settings-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
                 </div>
                 <div>
-                  <Label>Email</Label>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" />
+                  <Label htmlFor="settings-email">Email</Label>
+                  <Input type="email" id="settings-email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" />
                 </div>
                 <div>
-                  <Label>Password</Label>
-                  <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1" />
+                  <Label htmlFor="settings-password">Password</Label>
+                  <Input type="password" autoComplete="new-password" minLength={8} id="settings-password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Role</Label>
-                    <Select value={role} onValueChange={setRole}>
+                    <Select disabled={creating} value={role} onValueChange={setRole}>
                       <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {USER_ROLES.map((r) => (
@@ -225,23 +240,25 @@ export default function AdminPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label>PIN (4 digits, optional)</Label>
-                    <Input value={pin} onChange={(e) => setPin(e.target.value)} maxLength={4} placeholder="1234" className="mt-1 font-mono" />
+                    <Label htmlFor="settings-pin">PIN (4 digits, optional)</Label>
+                    <Input id="settings-pin" value={pin} onChange={(e) => setPin(e.target.value)} maxLength={4} placeholder="1234" className="mt-1 font-mono" />
                   </div>
                 </div>
                 <Button onClick={handleCreate} disabled={creating} className="w-full">
                   {creating ? "Creating..." : "Create User"}
                 </Button>
-              </div>
+              </fieldset>
             </DialogContent>
           </Dialog>
         }
       />
 
+      <Tabs defaultValue="team" className="space-y-5"><TabsList className="flex-wrap h-auto"><TabsTrigger value="team">Team</TabsTrigger><TabsTrigger value="workspace">Workspace</TabsTrigger><TabsTrigger value="personal">My account</TabsTrigger></TabsList>
+      <TabsContent value="team">
       {/* Users table */}
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">Loading...</p>
-      ) : (
+        <PageLoading label="Loading team members…" />
+      ) : usersError ? (<PageError message={usersError} retry={fetchUsers} />) : (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Team Members ({users.length})</CardTitle>
@@ -263,7 +280,7 @@ export default function AdminPage() {
                     <TableCell className="font-medium">{u.name}</TableCell>
                     <TableCell className="text-muted-foreground">{u.email}</TableCell>
                     <TableCell>
-                      <Select value={u.role} onValueChange={(v) => updateRole(u.id, v)}>
+                      <Select disabled={!!updatingUser} value={u.role} onValueChange={(v) => updateRole(u.id, v)}>
                         <SelectTrigger className="w-36 h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {USER_ROLES.map((r) => (
@@ -281,7 +298,7 @@ export default function AdminPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => toggleActive(u.id, u.isActive)}
+                        disabled={!!updatingUser} onClick={() => toggleActive(u.id, u.isActive)}
                       >
                         {u.isActive ? "Deactivate" : "Activate"}
                       </Button>
@@ -293,18 +310,19 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       )}
-      <Separator />
-
+      </TabsContent><TabsContent value="workspace" className="space-y-4">
+      {settingsError && <PageError message={settingsError} retry={fetchOrgSettings} />}
+      {settingsLoading && <PageLoading label="Loading workspace settings…" />}
       {/* Organization Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Organization Settings</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent><fieldset disabled={savingSettings || settingsLoading || !!settingsError} aria-busy={savingSettings} className="space-y-4 min-w-0"><legend className="sr-only">Workspace settings</legend>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Organization Name</Label>
-              <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="mt-1" />
+              <Label htmlFor="settings-orgName">Organization Name</Label>
+              <Input id="settings-orgName" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="mt-1" />
             </div>
             <div>
               <Label>Plan</Label>
@@ -383,10 +401,11 @@ export default function AdminPage() {
           <div>
             <p className="text-sm font-medium mb-3">Timezone</p>
             <Select
+              disabled={savingSettings || settingsLoading || !!settingsError}
               value={settings.timezone || "America/New_York"}
               onValueChange={(v) => setSettings({ ...settings, timezone: v })}
             >
-              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-64"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="America/New_York">Eastern (ET)</SelectItem>
                 <SelectItem value="America/Chicago">Central (CT)</SelectItem>
@@ -397,37 +416,37 @@ export default function AdminPage() {
             </Select>
           </div>
 
-          <Button onClick={saveOrgSettings} disabled={savingSettings}>
+          <Button onClick={saveOrgSettings} disabled={savingSettings || settingsLoading || !!settingsError}>
             {savingSettings ? "Saving..." : "Save Settings"}
           </Button>
-        </CardContent>
+        </fieldset></CardContent>
       </Card>
 
-      <Separator />
-
+      </TabsContent><TabsContent value="personal">
       {/* Change Password */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Change Password</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 max-w-sm">
+        <CardContent><fieldset disabled={changingPw} aria-busy={changingPw} className="space-y-3 max-w-sm"><legend className="sr-only">Change password</legend>
           <div>
-            <Label>Current Password</Label>
-            <Input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className="mt-1" />
+            <Label htmlFor="settings-currentPw">Current Password</Label>
+            <Input type="password" autoComplete="current-password" id="settings-currentPw" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className="mt-1" />
           </div>
           <div>
-            <Label>New Password</Label>
-            <Input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} className="mt-1" placeholder="Min 8 characters" />
+            <Label htmlFor="settings-newPw">New Password</Label>
+            <Input type="password" autoComplete="new-password" id="settings-newPw" value={newPw} onChange={(e) => setNewPw(e.target.value)} className="mt-1" placeholder="Min 8 characters" />
           </div>
           <div>
-            <Label>Confirm New Password</Label>
-            <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="mt-1" />
+            <Label htmlFor="settings-confirmPw">Confirm New Password</Label>
+            <Input type="password" autoComplete="new-password" id="settings-confirmPw" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="mt-1" />
           </div>
           <Button onClick={handleChangePassword} disabled={changingPw}>
             {changingPw ? "Changing..." : "Update Password"}
           </Button>
-        </CardContent>
+        </fieldset></CardContent>
       </Card>
+      </TabsContent></Tabs>
     </div>
   );
 }

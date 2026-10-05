@@ -1,0 +1,25 @@
+{
+  "checks": [
+    {
+      "name": "pour input locks during submission",
+      "passed": true
+    },
+    {
+      "name": "partial pour preserves failed barcode",
+      "passed": true
+    },
+    {
+      "name": "completed pour barcode leaves retry queue",
+      "passed": true
+    },
+    {
+      "name": "pour retry submits only failed barcode",
+      "passed": true
+    },
+    {
+      "name": "pour workflow has no page errors",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

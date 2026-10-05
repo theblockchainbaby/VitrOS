@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageLoading, PageError } from "@/components/page-state";
+import { HEALTH_COLORS } from "@/lib/design-tokens";
 import { PageHeader } from "@/components/page-header";
 import { STAGE_LABELS, HEALTH_STATUS_LABELS } from "@/lib/constants";
 import { format } from "date-fns";
@@ -14,17 +16,8 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 
-const COLORS = ["#16a34a", "#2563eb", "#7c3aed", "#d97706", "#dc2626", "#0891b2", "#be185d"];
-const CONTAMINATION_COLORS = ["#ef4444", "#f97316", "#eab308", "#a855f7"];
-const HEALTH_COLORS: Record<string, string> = {
-  healthy: "#16a34a",
-  stable: "#3b82f6",
-  critical: "#ef4444",
-  slow_growth: "#f59e0b",
-  necrotic: "#6b7280",
-  vitrified: "#8b5cf6",
-  dead: "#1f2937",
-};
+const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+const CONTAMINATION_COLORS = ["var(--status-critical)", "var(--status-warning)", "var(--chart-3)", "var(--chart-4)"];
 
 interface AnalyticsData {
   period: string;
@@ -59,29 +52,31 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [period, setPeriod] = useState("month");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    setLoading(true);
+  const loadAnalytics = useCallback(() => {
     fetch(`/api/analytics?period=${period}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Analytics could not be loaded. Please try again."); return r.json(); })
       .then(setData)
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [period]);
+  useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
 
   if (loading) {
     return (
       <div className="space-y-6">
         <PageHeader title="Analytics" description="Performance metrics and operational intelligence" />
-        <div className="text-center py-12 text-muted-foreground">Loading analytics...</div>
+        <PageLoading label="Loading analytics…" />
       </div>
     );
   }
 
-  if (!data) {
+  if (error || !data) {
     return (
       <div className="space-y-6">
         <PageHeader title="Analytics" description="Performance metrics and operational intelligence" />
-        <div className="text-center py-12 text-muted-foreground">Failed to load analytics</div>
+        <PageError message={error || "Analytics are unavailable."} retry={() => { setLoading(true); setError(""); loadAnalytics(); }} />
       </div>
     );
   }
@@ -100,8 +95,8 @@ export default function AnalyticsPage() {
         title="Analytics"
         description="Performance metrics and operational intelligence"
         actions={
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+          <Select value={period} onValueChange={(value) => { setLoading(true); setError(""); setPeriod(value); }}>
+            <SelectTrigger aria-label="Analytics period" className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="week">Week</SelectItem>
               <SelectItem value="month">Month</SelectItem>
@@ -113,9 +108,9 @@ export default function AnalyticsPage() {
       />
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2 h-auto gap-1 sm:flex sm:w-fit">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="cultivars">Cultivar Performance</TabsTrigger>
+          <TabsTrigger value="cultivars">Cultivars</TabsTrigger>
           <TabsTrigger value="production">Production</TabsTrigger>
           <TabsTrigger value="quality">Quality</TabsTrigger>
         </TabsList>
@@ -146,21 +141,21 @@ export default function AnalyticsPage() {
             />
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 [&>*]:min-w-0">
             <Card>
               <CardHeader><CardTitle className="text-sm font-medium">Production Throughput</CardTitle></CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer minWidth={0} width="100%" height={280}>
                   <AreaChart data={data.productionTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={11} />
                     <YAxis fontSize={11} />
                     <Tooltip labelFormatter={(d) => format(new Date(d as string), "MMM d, yyyy")} />
                     <Legend />
-                    <Area type="monotone" dataKey="created" stackId="1" stroke="#16a34a" fill="#16a34a" fillOpacity={0.6} name="Created" />
-                    <Area type="monotone" dataKey="multiplied" stackId="1" stroke="#2563eb" fill="#2563eb" fillOpacity={0.6} name="Multiplied" />
-                    <Area type="monotone" dataKey="stage_advanced" stackId="1" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.6} name="Stage Advanced" />
-                    <Area type="monotone" dataKey="disposed" stackId="1" stroke="#dc2626" fill="#dc2626" fillOpacity={0.4} name="Disposed" />
+                    <Area type="monotone" dataKey="created" stackId="1" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.6} name="Created" />
+                    <Area type="monotone" dataKey="multiplied" stackId="1" stroke="var(--chart-2)" fill="var(--chart-2)" fillOpacity={0.6} name="Multiplied" />
+                    <Area type="monotone" dataKey="stage_advanced" stackId="1" stroke="var(--chart-3)" fill="var(--chart-3)" fillOpacity={0.6} name="Stage Advanced" />
+                    <Area type="monotone" dataKey="disposed" stackId="1" stroke="var(--status-critical)" fill="var(--status-critical)" fillOpacity={0.4} name="Disposed" />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -169,7 +164,7 @@ export default function AnalyticsPage() {
             <Card>
               <CardHeader><CardTitle className="text-sm font-medium">Contamination Rate Trend</CardTitle></CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer minWidth={0} width="100%" height={280}>
                   <LineChart data={data.contaminationTrend}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="week" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={11} />
@@ -177,7 +172,7 @@ export default function AnalyticsPage() {
                     <Tooltip
                       labelFormatter={(d) => `Week of ${format(new Date(d as string), "MMM d")}`}
                     />
-                    <Line type="monotone" dataKey="rate" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Contamination %" />
+                    <Line type="monotone" dataKey="rate" stroke="var(--status-critical)" strokeWidth={2} dot={{ r: 3 }} name="Contamination %" />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -191,11 +186,11 @@ export default function AnalyticsPage() {
             <Card><CardContent className="py-8 text-center text-muted-foreground">No cultivar data available</CardContent></Card>
           ) : (
             <>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 [&>*]:min-w-0">
                 <Card>
                   <CardHeader><CardTitle className="text-sm font-medium">Contamination Rate by Cultivar</CardTitle></CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={Math.max(200, data.cultivarPerformance.length * 36)}>
+                    <ResponsiveContainer minWidth={0} width="100%" height={Math.max(200, data.cultivarPerformance.length * 36)}>
                       <BarChart
                         data={data.cultivarPerformance.filter((c) => c.totalVessels > 0).slice(0, 15)}
                         layout="vertical"
@@ -205,7 +200,7 @@ export default function AnalyticsPage() {
                         <XAxis type="number" unit="%" fontSize={11} />
                         <YAxis dataKey="name" type="category" width={120} fontSize={11} />
                         <Tooltip />
-                        <Bar dataKey="contaminationRate" fill="#ef4444" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="contaminationRate" fill="var(--status-critical)" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -214,7 +209,7 @@ export default function AnalyticsPage() {
                 <Card>
                   <CardHeader><CardTitle className="text-sm font-medium">Active Vessels by Cultivar</CardTitle></CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={Math.max(200, data.cultivarPerformance.length * 36)}>
+                    <ResponsiveContainer minWidth={0} width="100%" height={Math.max(200, data.cultivarPerformance.length * 36)}>
                       <BarChart
                         data={data.cultivarPerformance.filter((c) => c.activeVessels > 0).slice(0, 15)}
                         layout="vertical"
@@ -224,7 +219,7 @@ export default function AnalyticsPage() {
                         <XAxis type="number" fontSize={11} />
                         <YAxis dataKey="name" type="category" width={120} fontSize={11} />
                         <Tooltip />
-                        <Bar dataKey="activeVessels" fill="#2563eb" radius={[0, 4, 4, 0]} name="Active" />
+                        <Bar dataKey="activeVessels" fill="var(--chart-2)" radius={[0, 4, 4, 0]} name="Active" />
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -273,7 +268,7 @@ export default function AnalyticsPage() {
 
         {/* ── PRODUCTION TAB ── */}
         <TabsContent value="production" className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 [&>*]:min-w-0">
             <Card>
               <CardHeader><CardTitle className="text-sm font-medium">Survival Funnel</CardTitle></CardHeader>
               <CardContent>
@@ -308,13 +303,13 @@ export default function AnalyticsPage() {
               <CardHeader><CardTitle className="text-sm font-medium">Average Cycle Time by Stage</CardTitle></CardHeader>
               <CardContent>
                 {data.cycleTime.some((c) => c.avgDays > 0) ? (
-                  <ResponsiveContainer width="100%" height={250}>
+                  <ResponsiveContainer minWidth={0} width="100%" height={250}>
                     <BarChart data={data.cycleTime}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="stage" tickFormatter={(s) => STAGE_LABELS[s] || s} fontSize={11} />
                       <YAxis unit="d" fontSize={11} />
                       <Tooltip labelFormatter={(s) => STAGE_LABELS[s as string] || s} />
-                      <Bar dataKey="avgDays" fill="#7c3aed" radius={[4, 4, 0, 0]} name="Avg Days" />
+                      <Bar dataKey="avgDays" fill="var(--chart-3)" radius={[4, 4, 0, 0]} name="Avg Days" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -329,16 +324,16 @@ export default function AnalyticsPage() {
           <Card>
             <CardHeader><CardTitle className="text-sm font-medium">Weekly Throughput</CardTitle></CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer minWidth={0} width="100%" height={280}>
                 <BarChart data={aggregateWeekly(data.productionTrends)}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="week" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={11} />
                   <YAxis fontSize={11} />
                   <Tooltip labelFormatter={(d) => `Week of ${format(new Date(d as string), "MMM d")}`} />
                   <Legend />
-                  <Bar dataKey="created" fill="#16a34a" name="Created" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="multiplied" fill="#2563eb" name="Multiplied" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="disposed" fill="#dc2626" name="Disposed" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="created" fill="var(--chart-1)" name="Created" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="multiplied" fill="var(--chart-2)" name="Multiplied" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="disposed" fill="var(--status-critical)" name="Disposed" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -347,12 +342,12 @@ export default function AnalyticsPage() {
 
         {/* ── QUALITY TAB ── */}
         <TabsContent value="quality" className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 [&>*]:min-w-0">
             <Card>
               <CardHeader><CardTitle className="text-sm font-medium">Contamination by Type</CardTitle></CardHeader>
               <CardContent>
                 {data.contaminationByType.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
+                  <ResponsiveContainer minWidth={0} width="100%" height={250}>
                     <PieChart>
                       <Pie
                         data={data.contaminationByType}
@@ -395,7 +390,7 @@ export default function AnalyticsPage() {
                               className="h-full rounded-full transition-all"
                               style={{
                                 width: `${Math.max(pct, 1)}%`,
-                                backgroundColor: HEALTH_COLORS[h.status] || "#6b7280",
+                                backgroundColor: HEALTH_COLORS[h.status] || "var(--status-neutral)",
                               }}
                             />
                           </div>
@@ -413,15 +408,15 @@ export default function AnalyticsPage() {
           <Card>
             <CardHeader><CardTitle className="text-sm font-medium">Contamination Rate Over Time</CardTitle></CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer minWidth={0} width="100%" height={280}>
                 <LineChart data={data.contaminationTrend}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="week" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={11} />
                   <YAxis unit="%" fontSize={11} />
                   <Tooltip labelFormatter={(d) => `Week of ${format(new Date(d as string), "MMM d")}`} />
                   <Legend />
-                  <Line type="monotone" dataKey="rate" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Rate %" />
-                  <Line type="monotone" dataKey="count" stroke="#f97316" strokeWidth={1.5} strokeDasharray="5 5" dot={{ r: 2 }} name="Events" />
+                  <Line type="monotone" dataKey="rate" stroke="var(--status-critical)" strokeWidth={2} dot={{ r: 3 }} name="Rate %" />
+                  <Line type="monotone" dataKey="count" stroke="var(--status-warning)" strokeWidth={1.5} strokeDasharray="5 5" dot={{ r: 2 }} name="Events" />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>

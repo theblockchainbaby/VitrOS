@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { PageLoading, PageError } from "@/components/page-state";
+import { toast } from "sonner";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -34,37 +37,37 @@ export default function NotificationsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState("all");
+  const [error, setError] = useState("");
+  const [updating, setUpdating] = useState(false);
 
-  const fetchAlerts = () => {
-    setLoading(true);
+  const fetchAlerts = useCallback(() => {
+    setLoading(true); setError("");
     const params = new URLSearchParams();
     if (typeFilter !== "all") params.set("type", typeFilter);
     fetch(`/api/alerts?${params}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Notifications could not be loaded."); return r.json(); })
       .then((data) => setAlerts(data.alerts || []))
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchAlerts();
   }, [typeFilter]);
 
-  const markAsRead = async (ids: string[]) => {
-    await fetch("/api/alerts", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ alertIds: ids, action: "read" }),
-    });
-    fetchAlerts();
-  };
+  useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
 
-  const dismiss = async (ids: string[]) => {
-    await fetch("/api/alerts", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ alertIds: ids, action: "dismiss" }),
-    });
-    fetchAlerts();
+  const updateAlerts = async (ids: string[], action: "read" | "dismiss") => {
+    setUpdating(true);
+    try {
+      const response = await fetch("/api/alerts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ alertIds: ids, action }) });
+      if (!response.ok) throw new Error("Could not update notifications. Please try again.");
+      fetchAlerts();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Could not update notifications."); }
+    finally { setUpdating(false); }
+  };
+  const markAsRead = (ids: string[]) => updateAlerts(ids, "read");
+  const dismiss = (ids: string[]) => updateAlerts(ids, "dismiss");
+  const recordLink = (alert: Alert) => {
+    const routes: Record<string, string> = { vessel: "/vessels", inventory: "/inventory", location: "/locations", cultivar: "/cultivars", clone_line: "/clone-lines" };
+    if (alert.entityId && alert.entityType && routes[alert.entityType]) return `${routes[alert.entityType]}/${encodeURIComponent(alert.entityId)}`;
+    return alert.type === "environment_out_of_range" ? "/environment" : alert.type === "contamination_spike" ? "/analytics" : null;
   };
 
   const unreadCount = alerts.filter((a) => !a.isRead).length;
@@ -72,7 +75,7 @@ export default function NotificationsPage() {
   const severityBadge = (severity: string) => {
     switch (severity) {
       case "critical": return <Badge variant="destructive">Critical</Badge>;
-      case "warning": return <Badge className="bg-amber-500 hover:bg-amber-600">Warning</Badge>;
+      case "warning": return <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200">Warning</Badge>;
       default: return <Badge variant="secondary">Info</Badge>;
     }
   };
@@ -81,11 +84,12 @@ export default function NotificationsPage() {
     <div className="space-y-6 max-w-3xl mx-auto">
       <PageHeader
         title="Notifications"
-        description={`${unreadCount} unread`}
+        description={loading ? "Loading notifications…" : error ? "Workspace alerts" : `${unreadCount} unread in this view · latest 100 alerts`}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {unreadCount > 0 && (
               <Button
+                disabled={updating}
                 variant="outline"
                 size="sm"
                 onClick={() => markAsRead(alerts.filter((a) => !a.isRead).map((a) => a.id))}
@@ -94,7 +98,7 @@ export default function NotificationsPage() {
               </Button>
             )}
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Filter" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-48" aria-label="Notification type"><SelectValue placeholder="Filter" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 {ALERT_TYPES.map((t) => (
@@ -107,8 +111,8 @@ export default function NotificationsPage() {
       />
 
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">Loading...</p>
-      ) : alerts.length === 0 ? (
+        <PageLoading label="Loading notifications…" />
+      ) : error ? (<PageError message={error} retry={fetchAlerts} />) : alerts.length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-center text-muted-foreground">
             No notifications
@@ -121,9 +125,9 @@ export default function NotificationsPage() {
               {alerts.map((alert, i) => (
                 <div key={alert.id}>
                   {i > 0 && <Separator className="my-3" />}
-                  <div className={`flex items-start gap-3 ${!alert.isRead ? "bg-accent/30 -mx-2 px-2 py-1 rounded-md" : ""}`}>
+                  <div className={`flex flex-col sm:flex-row items-start gap-3 ${!alert.isRead ? "bg-accent/30 -mx-2 px-2 py-1 rounded-md" : ""}`}>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         {severityBadge(alert.severity)}
                         <span className="text-xs text-muted-foreground">
                           {ALERT_TYPE_LABELS[alert.type] || alert.type}
@@ -132,17 +136,18 @@ export default function NotificationsPage() {
                       </div>
                       <p className="text-sm font-medium">{alert.title}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
+                      {recordLink(alert) && <Link className="mt-2 inline-block text-sm font-medium text-primary hover:underline" href={recordLink(alert)!}>Open related record →</Link>}
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatDistanceToNow(new Date(alert.createdAt), { addSuffix: true })}
                       </p>
                     </div>
                     <div className="flex gap-1 shrink-0">
                       {!alert.isRead && (
-                        <Button variant="ghost" size="sm" onClick={() => markAsRead([alert.id])}>
+                        <Button disabled={updating} variant="ghost" size="sm" onClick={() => markAsRead([alert.id])}>
                           Read
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => dismiss([alert.id])}>
+                      <Button disabled={updating} variant="ghost" size="sm" onClick={() => dismiss([alert.id])}>
                         Dismiss
                       </Button>
                     </div>
