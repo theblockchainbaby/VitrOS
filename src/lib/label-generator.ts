@@ -153,9 +153,12 @@ export async function generateQRCodeDataURL(text: string): Promise<string> {
   });
 }
 
-export function printLabels(labelHTML: string) {
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) return;
+// Pass a pre-opened window when the HTML is built after async work: window.open
+// must happen during the user gesture or some browsers block the popup.
+// Returns false when no window is available so callers can surface the failure.
+export function printLabels(labelHTML: string, targetWindow?: Window | null): boolean {
+  const printWindow = targetWindow ?? window.open("", "_blank");
+  if (!printWindow) return false;
 
   printWindow.document.write(`
     <!DOCTYPE html>
@@ -190,4 +193,5 @@ export function printLabels(labelHTML: string) {
   printWindow.onload = () => {
     printWindow.print();
   };
+  return true;
 }

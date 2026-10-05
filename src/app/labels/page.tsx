@@ -48,12 +48,17 @@ export default function LabelsPage() {
         } else {
           toast.error("Vessel not found");
         }
+        // Definitive answer either way: clear the field for the next scan
+        setBarcodeInput("");
       } else {
-        toast.error("Lookup failed. Check your connection and try again.");
+        // Server error: keep the scanned barcode so the operator can retry
+        toast.error("Lookup failed. Try again.");
       }
+    } catch {
+      // Rejected fetch or invalid response: keep the barcode, allow retry
+      toast.error("Network error. The scanned barcode was kept, try again.");
     } finally {
       setLoading(false);
-      setBarcodeInput("");
       inputRef.current?.focus();
     }
   };
@@ -135,6 +140,14 @@ export default function LabelsPage() {
       return;
     }
 
+    // Open the print window during the click gesture. Opening it after the
+    // async QR generation below gets popup-blocked in some browsers.
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Print window was blocked. Allow popups for this site and try again.");
+      return;
+    }
+
     const style = sizeStyles[labelSize];
 
     // Pre-generate QR images so QR labels print real, scannable codes
@@ -147,6 +160,7 @@ export default function LabelsPage() {
           })
         );
       } catch {
+        printWindow.close();
         toast.error("Failed to generate QR codes");
         return;
       }
@@ -174,8 +188,11 @@ export default function LabelsPage() {
       `;
     }).join("");
 
-    printLabels(labelsHTML);
-    toast.success(`Printing ${selectedVessels.length} labels`);
+    if (printLabels(labelsHTML, printWindow)) {
+      toast.success(`Printing ${selectedVessels.length} labels`);
+    } else {
+      toast.error("Could not open the print window");
+    }
   };
 
   return (
