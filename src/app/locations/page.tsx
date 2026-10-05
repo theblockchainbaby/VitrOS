@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { LOCATION_TYPES, LOCATION_TYPE_LABELS } from "@/lib/constants";
 import type { Location } from "@/lib/types";
@@ -19,6 +20,7 @@ export default function LocationsPage() {
   const [locations, setLocations] = useState<(Location & { _count?: { vessels: number; children: number } })[]>([]);
   const [sites, setSites] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -34,7 +36,10 @@ export default function LocationsPage() {
 
   const fetchLocations = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
+    try {
     const res = await fetch("/api/locations");
+    if (!res.ok) throw new Error();
     const data = await res.json();
     setLocations(data);
 
@@ -45,7 +50,12 @@ export default function LocationsPage() {
     });
     setSites(Array.from(siteMap, ([id, name]) => ({ id, name })));
 
-    setLoading(false);
+
+    } catch {
+      setLoadError("Locations could not be loaded. Retry to see this view.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -90,6 +100,8 @@ export default function LocationsPage() {
         const err = await res.json();
         toast.error(err.error || "Failed to create location");
       }
+    } catch {
+      toast.error("The save could not be confirmed. Your entries have been kept.");
     } finally {
       setCreating(false);
     }
@@ -102,7 +114,7 @@ export default function LocationsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         title="Locations"
         description="Manage growth chambers, benches, and shelves"
@@ -116,15 +128,15 @@ export default function LocationsPage() {
                 <DialogTitle>Add Location</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Name</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Chamber A" className="mt-1" />
+                    <Label htmlFor="locations-field-1">Name</Label>
+                    <Input id="locations-field-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="Chamber A" className="mt-1" />
                   </div>
                   <div>
-                    <Label>Type</Label>
+                    <Label htmlFor="locations-field-2">Type</Label>
                     <Select value={type} onValueChange={setType}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
+                      <SelectTrigger id="locations-field-2" className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
                       <SelectContent>
                         {LOCATION_TYPES.map((t) => (
                           <SelectItem key={t} value={t}>{LOCATION_TYPE_LABELS[t]}</SelectItem>
@@ -133,11 +145,11 @@ export default function LocationsPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Site</Label>
+                    <Label htmlFor="locations-field-3">Site</Label>
                     <Select value={siteId} onValueChange={setSiteId}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select site" /></SelectTrigger>
+                      <SelectTrigger id="locations-field-3" className="mt-1"><SelectValue placeholder="Select site" /></SelectTrigger>
                       <SelectContent>
                         {sites.map((s) => (
                           <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -146,9 +158,9 @@ export default function LocationsPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label>Parent Location</Label>
+                    <Label htmlFor="locations-field-4">Parent Location</Label>
                     <Select value={parentId} onValueChange={setParentId}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="None (top level)" /></SelectTrigger>
+                      <SelectTrigger id="locations-field-4" className="mt-1"><SelectValue placeholder="None (top level)" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         {locations.map((l) => (
@@ -159,21 +171,21 @@ export default function LocationsPage() {
                   </div>
                 </div>
                 <div>
-                  <Label>Capacity (vessels)</Label>
-                  <Input type="number" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="Optional" className="mt-1" />
+                  <Label htmlFor="locations-field-5">Capacity (vessels)</Label>
+                  <Input id="locations-field-5" type="number" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="Optional" className="mt-1" />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Temp (C)</Label>
-                    <Input type="number" step="0.1" value={temperature} onChange={(e) => setTemperature(e.target.value)} className="mt-1" />
+                    <Label htmlFor="locations-field-6">Temp (C)</Label>
+                    <Input id="locations-field-6" type="number" step="0.1" value={temperature} onChange={(e) => setTemperature(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label>Humidity (%)</Label>
-                    <Input type="number" value={humidity} onChange={(e) => setHumidity(e.target.value)} className="mt-1" />
+                    <Label htmlFor="locations-field-7">Humidity (%)</Label>
+                    <Input id="locations-field-7" type="number" value={humidity} onChange={(e) => setHumidity(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label>Light (hrs)</Label>
-                    <Input type="number" value={lightHours} onChange={(e) => setLightHours(e.target.value)} className="mt-1" />
+                    <Label htmlFor="locations-field-8">Light (hrs)</Label>
+                    <Input id="locations-field-8" type="number" value={lightHours} onChange={(e) => setLightHours(e.target.value)} className="mt-1" />
                   </div>
                 </div>
                 <Button onClick={handleCreate} disabled={creating} className="w-full">
@@ -185,7 +197,7 @@ export default function LocationsPage() {
         }
       />
 
-      {loading ? (
+      {loadError ? <PageError message={loadError} retry={fetchLocations} /> : loading ? (
         <p className="text-center text-muted-foreground py-8">Loading...</p>
       ) : locations.length === 0 ? (
         <p className="text-center text-muted-foreground py-8">No locations configured. Add one to get started.</p>
@@ -200,7 +212,7 @@ export default function LocationsPage() {
                   <TableHead>Site</TableHead>
                   <TableHead>Parent</TableHead>
                   <TableHead className="text-right">Vessels</TableHead>
-                  <TableHead className="text-right">Capacity</TableHead>
+                  <TableHead className="text-right">Capacity used</TableHead>
                   <TableHead>Conditions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -208,8 +220,8 @@ export default function LocationsPage() {
                 {locations.map((loc) => {
                   const pct = getCapacityPct(loc);
                   return (
-                    <TableRow key={loc.id} className="cursor-pointer" onClick={() => window.location.href = `/locations/${loc.id}`}>
-                      <TableCell className="font-medium">{loc.name}</TableCell>
+                    <TableRow key={loc.id}>
+                      <TableCell className="font-medium"><Link href={`/locations/${loc.id}`} className="text-primary hover:underline underline-offset-4">{loc.name}</Link></TableCell>
                       <TableCell><Badge variant="outline">{LOCATION_TYPE_LABELS[loc.type] || loc.type}</Badge></TableCell>
                       <TableCell>{loc.site?.name ?? "—"}</TableCell>
                       <TableCell>{loc.parent?.name ?? "—"}</TableCell>
@@ -217,13 +229,13 @@ export default function LocationsPage() {
                       <TableCell className="text-right">
                         {loc.capacity ? (
                           <span className={pct && pct > 90 ? "text-red-500 font-medium" : ""}>
-                            {pct}%
+                            {loc._count?.vessels ?? 0} / {loc.capacity} ({pct}%)
                           </span>
                         ) : "—"}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {loc.conditions
-                          ? Object.entries(loc.conditions).map(([k, v]) => `${k}: ${v}`).join(", ")
+                          ? Object.entries(loc.conditions).map(([k, v]) => `${k === "temperature" ? "Temperature" : k === "humidity" ? "Humidity" : k === "lightHours" ? "Light" : k}: ${v}${k === "temperature" ? "°C" : k === "humidity" ? "%" : k === "lightHours" ? " h/day" : ""}`).join(", ")
                           : "—"}
                       </TableCell>
                     </TableRow>
@@ -238,10 +250,10 @@ export default function LocationsPage() {
             {locations.map((loc) => {
               const pct = getCapacityPct(loc);
               return (
-                <Link key={loc.id} href={`/locations/${loc.id}`}>
+                <Link key={loc.id} href={`/locations/${loc.id}`} className="block">
                   <Card className="hover:bg-accent/50 transition-colors">
                     <CardContent className="pt-4 pb-3">
-                      <div className="flex justify-between items-start">
+                      <div className="flex flex-wrap justify-between items-start gap-3">
                         <div>
                           <p className="font-medium">{loc.name}</p>
                           <p className="text-sm text-muted-foreground">{LOCATION_TYPE_LABELS[loc.type] || loc.type}</p>

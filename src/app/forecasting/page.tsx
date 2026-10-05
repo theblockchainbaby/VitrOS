@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,19 +9,14 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { Download } from "lucide-react";
 import { generateForecast, type ForecastPoint } from "@/lib/forecasting";
+import { PageLoading, PageError } from "@/components/page-state";
+import { STAGE_COLORS } from "@/lib/design-tokens";
+import { forecastParameters, loadCultivarStageCounts } from "./forecast-inputs";
 import { STAGE_LABELS } from "@/lib/constants";
 import type { DashboardStats } from "@/lib/types";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-
-const STAGE_COLORS: Record<string, string> = {
-  initiation: "#3b82f6",
-  multiplication: "#22c55e",
-  rooting: "#f59e0b",
-  acclimation: "#a855f7",
-  hardening: "#14b8a6",
-};
 
 interface CultivarOption {
   id: string;
@@ -35,22 +30,45 @@ export default function ForecastingPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [cultivars, setCultivars] = useState<CultivarOption[]>([]);
   const [selectedCultivar, setSelectedCultivar] = useState("all");
-  const [forecast, setForecast] = useState<ForecastPoint[]>([]);
+  const [cultivarInventory, setCultivarInventory] = useState<{ id: string; counts: Record<string, number> } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [revision, setRevision] = useState(0);
   const [weeks, setWeeks] = useState("8");
   const [multRate, setMultRate] = useState("3.0");
-  const [lossRate, setLossRate] = useState("0.05");
-  const [advanceRate, setAdvanceRate] = useState("0.7");
+  const [lossRate, setLossRate] = useState("5");
+  const [advanceRate, setAdvanceRate] = useState("70");
   const [subcultureWeeks, setSubcultureWeeks] = useState("2");
 
   useEffect(() => {
-    fetch("/api/stats").then((r) => r.json()).then(setStats);
-    fetch("/api/cultivars").then((r) => r.json()).then((data) => {
-      setCultivars(Array.isArray(data) ? data : data.cultivars || []);
-    });
-  }, []);
+    const controller = new AbortController();
+    Promise.all([fetch("/api/stats", { signal: controller.signal }), fetch("/api/cultivars", { signal: controller.signal })])
+      .then(async (responses) => {
+        if (responses.some((response) => !response.ok)) throw new Error("Could not load forecast inputs.");
+        const [statsData, cultivarData] = await Promise.all(responses.map((response) => response.json()));
+        setStats(statsData);
+        setCultivars(Array.isArray(cultivarData) ? cultivarData : cultivarData.cultivars || []);
+      }).catch((err) => { if (!controller.signal.aborted) setError(err.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [revision]);
+
+  useEffect(() => {
+    if (selectedCultivar === "all") return;
+    const controller = new AbortController();
+    loadCultivarStageCounts(selectedCultivar, controller.signal)
+      .then((counts) => setCultivarInventory({ id: selectedCultivar, counts }))
+      .catch((err) => { if (!controller.signal.aborted) setError(err.message); });
+    return () => controller.abort();
+  }, [selectedCultivar, revision]);
+
+  const currentByStage = useMemo(() => selectedCultivar === "all"
+    ? stats ? Object.fromEntries(stats.vesselsByStage.map((stage) => [stage.stage, stage.count])) : null
+    : cultivarInventory?.id === selectedCultivar ? cultivarInventory.counts : null, [stats, selectedCultivar, cultivarInventory]);
 
   // When a cultivar with stageConfig is selected, pre-fill parameters
   const handleCultivarChange = (value: string) => {
+    setError("");
     setSelectedCultivar(value);
     if (value !== "all") {
       const cv = cultivars.find((c) => c.id === value);
@@ -58,31 +76,17 @@ export default function ForecastingPage() {
         const multStage = cv.stageConfig.stages.find((s) => s.name === "multiplication");
         if (multStage) {
           setMultRate(String(multStage.multiplicationRate));
-          setLossRate(String(Math.round((1 - multStage.survivalRate) * 100) / 100));
+          setLossRate(String(Math.round((1 - multStage.survivalRate) * 10000) / 100));
         }
       }
     }
   };
 
-  useEffect(() => {
-    if (!stats?.vesselsByStage) return;
-
-    const currentByStage: Record<string, number> = {};
-    stats.vesselsByStage.forEach((s) => {
-      currentByStage[s.stage] = s.count;
-    });
-
-    const result = generateForecast({
-      currentByStage,
-      multiplicationRate: parseFloat(multRate) || 3,
-      subcultureIntervalWeeks: parseInt(subcultureWeeks) || 2,
-      lossRate: parseFloat(lossRate) || 0.05,
-      advanceRate: parseFloat(advanceRate) || 0.7,
-      weeksToForecast: parseInt(weeks) || 8,
-    });
-
-    setForecast(result);
-  }, [stats, weeks, multRate, lossRate, advanceRate, subcultureWeeks]);
+  const parameters = forecastParameters({ weeks, multiplication: multRate, lossPercent: lossRate, advancePercent: advanceRate, interval: subcultureWeeks });
+  const forecast: ForecastPoint[] = useMemo(() => {
+    const params = forecastParameters({ weeks, multiplication: multRate, lossPercent: lossRate, advancePercent: advanceRate, interval: subcultureWeeks });
+    return currentByStage && params ? generateForecast({ currentByStage, ...params }) : [];
+  }, [currentByStage, weeks, multRate, lossRate, advanceRate, subcultureWeeks]);
 
   const finalPoint = forecast[forecast.length - 1];
 
@@ -104,12 +108,12 @@ export default function ForecastingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="Production Forecasting"
           description="Project vessel counts by stage over time"
         />
-        {forecast.length > 0 && (
+        {forecast.length > 0 && !error && !loading && (
           <Button variant="outline" size="sm" onClick={handleExportCSV}>
             <Download className="size-4 mr-1.5" /> Export CSV
           </Button>
@@ -122,7 +126,7 @@ export default function ForecastingPage() {
           <CardTitle className="text-base">Forecast Parameters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
             <div>
               <Label>Cultivar</Label>
               <Select value={selectedCultivar} onValueChange={handleCultivarChange}>
@@ -153,26 +157,29 @@ export default function ForecastingPage() {
             </div>
             <div>
               <Label>Mult. Rate</Label>
-              <Input type="number" step="0.1" value={multRate} onChange={(e) => setMultRate(e.target.value)} className="mt-1" />
+              <Input type="number" min="1" step="0.1" aria-label="Multiplication rate" value={multRate} onChange={(e) => setMultRate(e.target.value)} className="mt-1" />
             </div>
             <div>
               <Label>Loss Rate (%)</Label>
-              <Input type="number" step="0.01" value={lossRate} onChange={(e) => setLossRate(e.target.value)} className="mt-1" />
+              <Input type="number" min="0" max="100" step="0.1" aria-label="Loss rate percent" value={lossRate} onChange={(e) => setLossRate(e.target.value)} className="mt-1" />
             </div>
             <div>
-              <Label>Advance Rate</Label>
-              <Input type="number" step="0.1" value={advanceRate} onChange={(e) => setAdvanceRate(e.target.value)} className="mt-1" />
+              <Label>Advance Rate (%)</Label>
+              <Input type="number" min="0" max="100" step="1" aria-label="Advance rate percent" value={advanceRate} onChange={(e) => setAdvanceRate(e.target.value)} className="mt-1" />
             </div>
             <div>
               <Label>Subculture (wks)</Label>
-              <Input type="number" value={subcultureWeeks} onChange={(e) => setSubcultureWeeks(e.target.value)} className="mt-1" />
+              <Input type="number" min="1" aria-label="Subculture interval in weeks" value={subcultureWeeks} onChange={(e) => setSubcultureWeeks(e.target.value)} className="mt-1" />
             </div>
           </div>
         </CardContent>
       </Card>
 
+      <p className="text-sm text-muted-foreground">Starting inventory: {currentByStage ? Object.values(currentByStage).reduce((sum, count) => sum + count, 0).toLocaleString() : "—"} active vessels · {selectedCultivar === "all" ? "All cultivars" : cultivars.find((cultivar) => cultivar.id === selectedCultivar)?.name}. Media preparation, multiplied and disposed vessels are excluded. Projections use your assumptions; they are not a production commitment.</p>
+      {!parameters && <p role="alert" className="text-sm text-destructive">Enter valid rates. Loss and advance must each be 0–100%, with a combined maximum of 100%. Multiplication and the whole-week interval must be at least 1.</p>}
+      {error ? <PageError message={error} retry={() => { setLoading(true); setError(""); setCultivarInventory(null); setRevision((value) => value + 1); }} /> : (loading || !currentByStage) && <PageLoading label="Loading starting inventory…" />}
       {/* Chart */}
-      {forecast.length > 0 && (
+      {forecast.length > 0 && !error && !loading && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
@@ -185,7 +192,7 @@ export default function ForecastingPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
+            <ResponsiveContainer minWidth={0} width="100%" height={350}>
               <AreaChart data={forecast}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d) => d.slice(5)} />
@@ -210,7 +217,7 @@ export default function ForecastingPage() {
       )}
 
       {/* Week-by-week breakdown */}
-      {forecast.length > 0 && (
+      {forecast.length > 0 && !error && !loading && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Week-by-Week Breakdown</CardTitle>

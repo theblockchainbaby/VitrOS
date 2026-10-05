@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, AlertTriangle, CheckCircle2, HelpCircle } from "lucide-react";
@@ -45,17 +46,17 @@ interface CloneLineDetail {
 
 function ResultBadge({ result }: { result: string }) {
   if (result === "clean") return (
-    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
       <CheckCircle2 className="size-3" /> Clean
     </span>
   );
   if (result === "dirty") return (
-    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
+    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
       <AlertTriangle className="size-3" /> Dirty
     </span>
   );
   return (
-    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium">
+    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-800 dark:text-amber-300 font-medium">
       <HelpCircle className="size-3" /> Inconclusive
     </span>
   );
@@ -65,6 +66,7 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
   const { id } = use(params);
   const [line, setLine] = useState<CloneLineDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [logTestOpen, setLogTestOpen] = useState(false);
   const [testForm, setTestForm] = useState({
     testDate: new Date().toISOString().split("T")[0],
@@ -75,16 +77,19 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
     assayType: "",
     notes: "",
   });
+  const [savingStatus, setSavingStatus] = useState(false);
   const [savingTest, setSavingTest] = useState(false);
 
   const fetchLine = () => {
+    setLoadError(null);
+    setLoading(true);
     fetch(`/api/clone-lines/${id}`)
       .then((r) => {
-        if (!r.ok) throw new Error();
+        if (!r.ok) throw new Error(r.status === 404 ? "Clone line not found." : "Clone line could not be loaded. Try again.");
         return r.json();
       })
       .then(setLine)
-      .catch(() => setLine(null))
+      .catch((error) => setLoadError(error instanceof Error ? error.message : "Clone line could not be loaded. Try again."))
       .finally(() => setLoading(false));
   };
 
@@ -126,12 +131,17 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
         const err = await res.json();
         toast.error(err.error || "Failed to log test");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setSavingTest(false);
     }
   };
 
   const handleStatusChange = async (newStatus: string) => {
+    if (savingStatus) return;
+    setSavingStatus(true);
+    try {
     const res = await fetch(`/api/clone-lines/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -141,36 +151,41 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
       toast.success("Status updated");
       fetchLine();
     } else {
-      toast.error("Failed to update status");
+      const data = await res.json();
+      toast.error(data.error || "Failed to update status");
     }
+    } catch {
+      toast.error("Status change could not be confirmed. Reload the record before retrying.");
+    } finally { setSavingStatus(false); }
   };
 
+  if (loadError) return <PageError message={loadError} retry={fetchLine} />;
   if (loading) return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
   if (!line) return <div className="text-center py-12 text-muted-foreground">Clone line not found</div>;
 
-  const statusColor = line.status === "active" ? "bg-green-100 text-green-700" :
-    line.status === "quarantined" ? "bg-red-100 text-red-700" :
+  const statusColor = line.status === "active" ? "bg-primary/10 text-primary" :
+    line.status === "quarantined" ? "bg-destructive/10 text-destructive" :
     "bg-muted text-muted-foreground";
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-2">
+    <div className="min-w-0 space-y-6 max-w-5xl mx-auto">
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/cultivars/${line.cultivar.id}`}>
+          <Link href={`/cultivars/${line.cultivar.id}`} aria-label={`Back to ${line.cultivar.name}`}>
             <ArrowLeft className="size-4" />
           </Link>
         </Button>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <PageHeader
             title={`${line.lineNumber ? `Line #${line.lineNumber} — ` : ""}${line.name}`}
             description={`${line.cultivar.name}${line.cultivar.code ? ` (${line.cultivar.code})` : ""} · ${line.cultivar.species}`}
             actions={
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor}`}>
                   {line.status}
                 </span>
-                <Select value={line.status} onValueChange={handleStatusChange}>
-                  <SelectTrigger className="h-8 text-xs w-36">
+                <Select disabled={savingStatus} value={line.status} onValueChange={handleStatusChange}>
+                  <SelectTrigger aria-label="Clone line status" className="h-9 text-sm w-36">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -186,7 +201,7 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 [&>*]:min-w-0 [&>*]:break-words">
         <div className="text-center p-4 bg-muted/50 rounded-lg">
           <p className="text-2xl font-mono font-bold">{line.vesselCount}</p>
           <p className="text-xs text-muted-foreground">Total Vessels</p>
@@ -212,7 +227,7 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
       {/* Pathogen Test History */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
+          <CardTitle className="text-base flex flex-wrap items-center justify-between gap-3">
             <span>Pathogen Test History</span>
             <Dialog open={logTestOpen} onOpenChange={setLogTestOpen}>
               <DialogTrigger asChild>
@@ -225,22 +240,22 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
                   <DialogTitle>Log Pathogen Test</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-2">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                     <div className="space-y-2">
-                      <Label>Test Date</Label>
-                      <Input
+                      <Label htmlFor="clone-lines-id-field-1">Test Date</Label>
+                      <Input id="clone-lines-id-field-1"
                         type="date"
                         value={testForm.testDate}
                         onChange={(e) => setTestForm({ ...testForm, testDate: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Result</Label>
+                      <Label htmlFor="clone-lines-id-field-2">Result</Label>
                       <Select
                         value={testForm.result}
                         onValueChange={(v) => setTestForm({ ...testForm, result: v as "clean" | "dirty" | "inconclusive" })}
                       >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger id="clone-lines-id-field-2"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="clean">Clean</SelectItem>
                           <SelectItem value="dirty">Dirty (will quarantine line)</SelectItem>
@@ -249,10 +264,10 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                     <div className="space-y-2">
-                      <Label>Lab Name</Label>
-                      <Input
+                      <Label htmlFor="clone-lines-id-field-3">Lab Name</Label>
+                      <Input id="clone-lines-id-field-3"
                         value={testForm.labName}
                         onChange={(e) => setTestForm({ ...testForm, labName: e.target.value })}
                         placeholder="e.g., Confident Cannabis"
@@ -260,8 +275,8 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Accession / Testing ID</Label>
-                      <Input
+                      <Label htmlFor="clone-lines-id-field-4">Accession / Testing ID</Label>
+                      <Input id="clone-lines-id-field-4"
                         value={testForm.testingId}
                         onChange={(e) => setTestForm({ ...testForm, testingId: e.target.value })}
                         placeholder="Lab sample ID"
@@ -269,18 +284,18 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                     <div className="space-y-2">
-                      <Label>Pathogen Detected (if dirty)</Label>
-                      <Input
+                      <Label htmlFor="clone-lines-id-field-5">Pathogen Detected (if dirty)</Label>
+                      <Input id="clone-lines-id-field-5"
                         value={testForm.pathogen}
                         onChange={(e) => setTestForm({ ...testForm, pathogen: e.target.value })}
                         placeholder="e.g., Hop Latent Viroid"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Assay Type</Label>
-                      <Input
+                      <Label htmlFor="clone-lines-id-field-6">Assay Type</Label>
+                      <Input id="clone-lines-id-field-6"
                         value={testForm.assayType}
                         onChange={(e) => setTestForm({ ...testForm, assayType: e.target.value })}
                         placeholder="e.g., RT-PCR, qPCR"
@@ -288,8 +303,8 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Notes (optional)</Label>
-                    <Textarea
+                    <Label htmlFor="clone-lines-id-field-7">Notes (optional)</Label>
+                    <Textarea id="clone-lines-id-field-7"
                       value={testForm.notes}
                       onChange={(e) => setTestForm({ ...testForm, notes: e.target.value })}
                       rows={2}
@@ -297,7 +312,7 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
                     />
                   </div>
                   {testForm.result === "dirty" && (
-                    <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start gap-2 p-3 bg-destructive/5 border border-destructive/20 rounded-lg">
                       <AlertTriangle className="size-4 text-red-600 mt-0.5 shrink-0" />
                       <p className="text-xs text-red-700">
                         Logging a dirty result will automatically set this line to <strong>Quarantined</strong> status.
@@ -364,7 +379,7 @@ export default function CloneLineDetailPage({ params }: { params: Promise<{ id: 
           <CardTitle className="text-base">Line Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="grid grid-cols-2 gap-2 text-sm [&>*]:min-w-0 [&>*]:break-words">
             <span className="text-muted-foreground">Cultivar</span>
             <Link href={`/cultivars/${line.cultivar.id}`} className="text-primary hover:underline">
               {line.cultivar.name}

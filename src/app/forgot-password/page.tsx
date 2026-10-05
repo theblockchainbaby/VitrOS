@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import Image from "next/image";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -42,19 +42,11 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30">
-      <div className="w-full max-w-md mx-4">
-        <div className="rounded-xl border bg-card p-8 shadow-sm">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Image src="/logo.png" alt="VitrOS" width={500} height={488} className="h-14 w-auto" />
-          </div>
-          <p className="text-center text-muted-foreground mb-6">
-            Reset your password
-          </p>
+    <AuthShell title="Reset your password" description="We’ll help you get back to your lab.">
 
           {submitted ? (
             <div className="space-y-4">
-              <div className="rounded-lg bg-primary/10 text-foreground text-sm p-4">
+              <div role="status" className="rounded-lg bg-primary/10 text-foreground text-sm p-4">
                 If an account exists for <strong>{email}</strong>, we&apos;ve sent a
                 password reset link. Check your inbox and follow the
                 instructions. The link expires in 1 hour.
@@ -68,12 +60,12 @@ export default function ForgotPasswordPage() {
           ) : (
             <>
               {error && (
-                <div className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 mb-4">
+                <div role="alert" className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 mb-4">
                   {error}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form aria-busy={loading} onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -103,8 +95,6 @@ export default function ForgotPasswordPage() {
               </p>
             </>
           )}
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

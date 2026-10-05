@@ -1,30 +1,19 @@
-import type { Metadata } from "next";
+import { PublicPage, ProductScreenshot } from "@/components/public-site";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import Image from "next/image";
 import {
   FlaskConical, Scan, ShieldAlert, BarChart3, Microscope, Users,
-  ArrowRight, Check, GitBranch, Bell, Layers, Smartphone,
+  ArrowRight, GitBranch, Bell, Layers, Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = {
-  title: "Features | Vessel Tracking & Lab Automation | VitrOS",
+export const metadata = publicPageMetadata({
+  title: "Vessel Tracking & Tissue Culture Software Features | VitrOS",
   description:
-    "Track vessels from initiation to ship-out, automate subculture scheduling, scan barcodes in 3 seconds, and monitor contamination—all in one tissue culture platform.",
-  keywords: [
-    "lab tracking software",
-    "laboratory automation software",
-    "vessel management platform",
-    "culture lifecycle platform",
-    "plant lab command center",
-    "tissue culture workflow automation",
-  ],
-  openGraph: {
-    title: "Features | Vessel Tracking & Lab Automation | VitrOS",
-    description:
-      "Track vessels from initiation to ship-out, automate subculture scheduling, scan barcodes in 3 seconds, and monitor contamination—all in one tissue culture platform.",
-  },
-};
+    "Explore VitrOS tools for vessel tracking, barcode labels, subculture scheduling, media records, contamination review, and tissue culture production planning.",
+  path: "/features",
+});
 
 const CORE_FEATURES = [
   {
@@ -38,14 +27,14 @@ const CORE_FEATURES = [
     icon: Scan,
     title: "Barcode Scanning",
     description:
-      "Scan vessel barcodes with your phone camera — no dedicated hardware required. Log a vessel in 3 seconds instead of 15. That's 5x faster than manual entry.",
+      "Scan vessel barcodes with your phone camera — no dedicated hardware required. Look up a record, log a health check, or start the next culture run from the bench.",
     keywords: "lab tracking software",
   },
   {
     icon: ShieldAlert,
     title: "Contamination Analytics",
     description:
-      "Spot contamination trends by cultivar, location, media type, and technician before they spread. Real-time alerts when contamination rates spike above your thresholds.",
+      "Review contamination patterns and flagged conditions by cultivar, location, media type, and technician to guide your next inspection.",
     keywords: "contamination tracking",
   },
   {
@@ -66,63 +55,92 @@ const CORE_FEATURES = [
     icon: Users,
     title: "Team Collaboration",
     description:
-      "Role-based access control with Admin, Manager, Lead Tech, Tech, and Media Maker roles. Full activity audit logs for every action every team member takes.",
+      "Role-based access control with Admin, Manager, Lead Tech, Tech, and Media Maker roles. Shared activity records show who performed recorded lab operations.",
     keywords: "laboratory automation software",
   },
 ];
 
 const ADDITIONAL_FEATURES = [
   { icon: GitBranch, title: "Lineage Trees", description: "Trace any vessel back to its mother plant through a visual family tree. Full parent-child lineage tracking across generations." },
-  { icon: Layers, title: "Batch Operations", description: "Select multiple vessels and advance stages, update health, or dispose in bulk. Process hundreds of vessels in seconds." },
-  { icon: Bell, title: "Smart Notifications", description: "Get alerted when vessels are due for subculture, when contamination spikes, or when stages are overdue." },
+  { icon: Layers, title: "Batch Operations", description: "Select multiple vessels and advance stages, update health, or dispose in bulk. Review and update your selected vessels together." },
+  { icon: Bell, title: "Lab Notifications", description: "Review in-app reminders for due subcultures, overdue stages, and flagged contamination conditions." },
   { icon: Smartphone, title: "Mobile-First Design", description: "Built for the lab floor. Scan barcodes, log health checks, and update vessels from your phone or tablet." },
   { icon: BarChart3, title: "Demand Forecasting", description: "Project vessel output weeks ahead based on your pipeline. Plan production around customer orders and seasonal demand." },
-  { icon: ShieldAlert, title: "Full Audit Trail", description: "Every action logged with who, what, and when. Exportable reports for compliance, client deliverables, and internal review." },
+  { icon: ShieldAlert, title: "Activity History", description: "Review recorded activities with who, what, and when. Export reports for client deliverables and internal review." },
 ];
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Nav */}
-      <nav className="border-b sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="VitrOS" width={500} height={488} className="h-14 w-auto" />
-          </Link>
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Link href="/features"><Button variant="ghost" size="sm">Features</Button></Link>
-            <Link href="/pricing"><Button variant="ghost" size="sm">Pricing</Button></Link>
-            <Link href="/blog" className="hidden sm:inline-flex"><Button variant="ghost" size="sm">Blog</Button></Link>
-            <Link href="/demo" className="hidden sm:inline-flex"><Button variant="ghost" size="sm">Demo</Button></Link>
-            <Link href="/login"><Button variant="ghost" size="sm">Sign In</Button></Link>
-            <Link href="/signup"><Button size="sm">Start Free</Button></Link>
-          </div>
-        </div>
-      </nav>
+    <PublicPage>
 
       {/* Hero */}
-      <section className="py-20 md:py-28 px-4">
+      <section className="py-16 md:py-24 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-6">
-            Every Tool Your Tissue Culture Lab Needs
+          <p className="mb-5 flex items-center justify-center gap-2 text-sm font-medium text-primary"><FlaskConical aria-hidden="true" className="size-4" /> Built around the culture lifecycle</p>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight mb-6">
+            Vessel tracking and tissue culture lab tools
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            VitrOS is a vessel management platform that replaces spreadsheets, paper logs, and disconnected tools
-            with one integrated laboratory automation software built for tissue culture.
+            VitrOS brings vessel records, lineage, bench work, and production planning into one connected workspace.
           </p>
-          <div className="flex gap-4 justify-center">
-            <Link href="/signup">
-              <Button size="lg">Start Free <ArrowRight className="h-4 w-4 ml-1" /></Button>
-            </Link>
-            <Link href="/demo">
-              <Button size="lg" variant="outline">Get a Demo</Button>
-            </Link>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Button asChild size="lg"><Link href="/signup">Start free <ArrowRight className="size-4" /></Link></Button>
+            <Button asChild size="lg" variant="outline"><Link href="/demo">Explore the demo</Link></Button>
           </div>
+          <nav aria-label="Feature views" className="mt-8 flex flex-wrap justify-center gap-2 sm:gap-3">
+            {[["#vessel-tracking", "Vessel records"], ["#lineage", "Lineage"], ["#scanning", "Barcode scanning"]].map(([href, label]) => <a key={href} href={href} className="rounded-md border bg-card px-4 py-2.5 text-xs transition-colors hover:border-primary/50 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring sm:text-sm">{label} <span aria-hidden="true">↘</span></a>)}
+          </nav>
+        </div>
+      </section>
+
+      <section id="vessel-tracking" className="scroll-mt-20 border-y bg-muted/30 px-4 py-16 sm:px-6 md:py-24">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[310px_1fr] lg:gap-14">
+          <div className="max-w-xl">
+            <p className="mb-4 text-xs font-medium tracking-wide text-primary">01 / Vessel records</p>
+            <h2 className="text-3xl sm:text-4xl">Every culture has a story. Keep it with the vessel.</h2>
+            <p className="mt-5 leading-relaxed text-muted-foreground">See the cultivar, stage, health, location, and activity behind a single culture. Bring the details together in a record your team can use.</p>
+            <Link href="/demo" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary">Explore vessel tracking <ArrowRight aria-hidden="true" className="size-4" /></Link>
+          </div>
+          <ProductScreenshot src="/images/product/vessel-record.png" alt="VitrOS record for vessel TC-2026-0042 with cultivar, production stage, health, location, and next subculture date" caption="Vessel record · TC-2026-0042" sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1023px) calc(100vw - 48px), 786px" />
+        </div>
+      </section>
+
+      <section id="lineage" className="scroll-mt-20 border-b px-4 py-16 sm:px-6 md:py-24">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[1fr_310px] lg:gap-14">
+          <div className="max-w-xl lg:order-2">
+            <p className="mb-4 text-xs font-medium tracking-wide text-primary">02 / Culture lineage</p>
+            <h2 className="text-3xl sm:text-4xl">Follow the line.<br />Keep the context.</h2>
+            <p className="mt-5 leading-relaxed text-muted-foreground">Trace parent and child vessels across generations. See where a culture came from and follow the records that grew from it.</p>
+            <Link href="/demo" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary">Explore culture lineage <ArrowRight aria-hidden="true" className="size-4" /></Link>
+          </div>
+          <ProductScreenshot src="/images/product/culture-lineage.png" alt="VitrOS lineage tree connecting parent and child culture records across generations" caption="Culture lineage · connected generations" sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1023px) calc(100vw - 48px), 786px" />
+        </div>
+      </section>
+
+      <section id="scanning" className="scroll-mt-20 border-b bg-card px-4 py-16 sm:px-6 md:py-24">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[310px_1fr] lg:gap-14">
+          <div className="max-w-xl">
+            <p className="mb-4 text-xs font-medium tracking-wide text-primary">03 / Tools for the bench</p>
+            <h2 className="text-3xl sm:text-4xl">From the barcode<br />to the next step.</h2>
+            <p className="mt-5 leading-relaxed text-muted-foreground">Look up a vessel from the bench. Scan its barcode or enter its identifier to bring the record into view.</p>
+            <Link href="/demo" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary">Explore the scan workflow <ArrowRight aria-hidden="true" className="size-4" /></Link>
+            <figure className="mt-8 flex items-center gap-4 border-t pt-6">
+              <a href="/images/product/vessel-label-preview.png" target="_blank" rel="noopener noreferrer" className="w-[105px] shrink-0 overflow-hidden rounded-md border bg-white focus-visible:outline-2 focus-visible:outline-ring" aria-label="Open full-size VitrOS QR label preview for TC-2026-0042">
+                <Image src="/images/product/vessel-label-preview.png" alt="VitrOS QR label for TC-2026-0042, Monstera deliciosa, multiplication stage" width={500} height={398} sizes="105px" className="h-auto w-full" />
+              </a>
+              <figcaption>
+                <p className="text-sm font-medium">A label that follows the culture.</p>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Actual VitrOS label preview.<br />Demonstration data.</p>
+                <a href="/images/product/label-printing.png" target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary">View label printing <ArrowRight aria-hidden="true" className="size-3" /></a>
+              </figcaption>
+            </figure>
+          </div>
+          <ProductScreenshot src="/images/product/vessel-scanning.png" alt="VitrOS Scan Vessel interface showing record TC-2026-0042 and fields to update the culture from the bench" caption="Scan · find a vessel at the bench" sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1023px) calc(100vw - 48px), 786px" />
         </div>
       </section>
 
       {/* Core Features */}
-      <section className="py-16 md:py-24 px-4 bg-muted/30">
+      <section className="py-16 md:py-24 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-center mb-4">
             Core Platform Capabilities
@@ -145,7 +163,7 @@ export default function FeaturesPage() {
       </section>
 
       {/* Additional Features */}
-      <section className="py-16 md:py-24 px-4">
+      <section className="py-16 md:py-24 px-4 sm:px-6 bg-muted/30">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-center mb-4">
             And That&apos;s Just the Start
@@ -169,84 +187,23 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Efficiency */}
-      <section className="py-16 md:py-24 px-4 bg-primary text-primary-foreground">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-6xl font-bold mb-4">5x Faster</h2>
-          <p className="text-2xl font-medium mb-3 opacity-90">15 seconds → 3 seconds per vessel</p>
-          <p className="text-lg opacity-75 max-w-xl mx-auto">
-            VitrOS cuts vessel logging time by 80%, giving your team hours back every day.
-            That&apos;s the power of a plant lab command center built for speed.
-          </p>
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="py-16 md:py-24 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Ready to see lifecycle tracking for your tissue lab?
+            See the culture lifecycle,<br />one record at a time.
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Start free or get a personalized demo of every feature.
+            Explore with demonstration data, or start your own lab workspace.
           </p>
-          <div className="flex gap-4 justify-center">
-            <Link href="/signup">
-              <Button size="lg">Start Free <ArrowRight className="h-4 w-4 ml-1" /></Button>
-            </Link>
-            <Link href="/demo">
-              <Button size="lg" variant="outline">Get a Demo</Button>
-            </Link>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Button asChild size="lg"><Link href="/signup">Start free <ArrowRight className="size-4" /></Link></Button>
+            <Button asChild size="lg" variant="outline"><Link href="/demo">Explore the demo</Link></Button>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-10 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Product</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/features" className="hover:text-foreground transition-colors">Features</Link></li>
-                <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
-                <li><Link href="/demo" className="hover:text-foreground transition-colors">Demo</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Company</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/why-vitros" className="hover:text-foreground transition-colors">Why VitrOS</Link></li>
-                <li><a href="mailto:support@vitroslabs.com" className="hover:text-foreground transition-colors">Contact</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Resources</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
-                <li><Link href="/login" className="hover:text-foreground transition-colors">Sign In</Link></li>
-                <li><Link href="/signup" className="hover:text-foreground transition-colors">Start Free</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Built For</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Tissue Culture Labs</li>
-                <li>Plant Propagation</li>
-                <li>Commercial Nurseries</li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center">
-              <Image src="/logo.png" alt="VitrOS" width={100} height={67} className="h-8 w-auto" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} VitrOS Labs. Powered by Caipher. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
-    </div>
+
+    </PublicPage>
   );
 }

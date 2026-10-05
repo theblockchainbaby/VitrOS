@@ -1,27 +1,16 @@
-import type { Metadata } from "next";
+import { PublicPage } from "@/components/public-site";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-export const metadata: Metadata = {
-  title: "Pricing | VitrOS Lab Management Software",
+export const metadata = publicPageMetadata({
+  title: "Tissue Culture Software Pricing & Plans | VitrOS",
   description:
-    "Simple, scalable pricing for tissue culture labs. Start from $49/mo with vessel tracking, barcode scanning, dashboards, and more. Try VitrOS today.",
-  keywords: [
-    "lab workflow software",
-    "tissue tracking software",
-    "lab inventory software",
-    "lab management software pricing",
-    "tissue culture software cost",
-  ],
-  openGraph: {
-    title: "Pricing | VitrOS Lab Management Software",
-    description:
-      "Simple, scalable pricing for tissue culture labs. Start from $49/mo with vessel tracking, barcode scanning, dashboards, and more.",
-  },
-};
+    "Compare VitrOS plans for tissue culture labs, including vessel limits, team access, and lab management features. Choose a plan for your operation.",
+  path: "/pricing",
+});
 
 const PLANS = [
   {
@@ -89,10 +78,10 @@ const PLANS = [
       "Everything in Pro, plus:",
       "Custom integrations & API access",
       "Dedicated account manager",
-      "SLA guarantee (99.9% uptime)",
+      "Discuss service-level requirements",
       "On-site training & onboarding",
       "Custom reporting",
-      "SSO / advanced security",
+      "Discuss identity and security requirements",
       "White-glove onboarding",
     ],
   },
@@ -101,11 +90,11 @@ const PLANS = [
 const FAQ = [
   {
     q: "Is there a free trial?",
-    a: "Yes, every plan comes with a 30-day free trial. No credit card required to start.",
+    a: "Create a workspace with a 30-day trial and no credit card. If you select a paid plan, checkout shows the payment details and any applicable trial before you subscribe.",
   },
   {
     q: "Can I switch plans later?",
-    a: "Absolutely. Upgrade or downgrade at any time. Changes take effect on your next billing cycle.",
+    a: "Manage your subscription from Billing. Review the effective date and any charge shown in checkout or the billing portal before confirming a change.",
   },
   {
     q: "What counts as an 'active vessel'?",
@@ -129,29 +118,13 @@ export default async function PricingPage({
   const { billing } = await searchParams;
   const annual = billing === "annual";
   return (
-    <div className="min-h-screen bg-background">
-      {/* Nav */}
-      <nav className="border-b sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="VitrOS" width={500} height={488} className="h-14 w-auto" />
-          </Link>
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Link href="/features"><Button variant="ghost" size="sm">Features</Button></Link>
-            <Link href="/pricing"><Button variant="ghost" size="sm">Pricing</Button></Link>
-            <Link href="/blog" className="hidden sm:inline-flex"><Button variant="ghost" size="sm">Blog</Button></Link>
-            <Link href="/demo" className="hidden sm:inline-flex"><Button variant="ghost" size="sm">Demo</Button></Link>
-            <Link href="/login"><Button variant="ghost" size="sm">Sign In</Button></Link>
-            <Link href="/signup"><Button size="sm">Start Free</Button></Link>
-          </div>
-        </div>
-      </nav>
+    <PublicPage>
 
       {/* Hero */}
-      <section className="py-20 md:py-28 px-4">
+      <section className="py-16 md:py-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-6">
-            Simple, Scalable Pricing for Every Lab
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight mb-6">
+            Tissue culture software pricing
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Lab workflow software that grows with your operation. Every plan includes vessel tracking,
@@ -187,7 +160,7 @@ export default async function PricingPage({
           </div>
         </div>
         {/* Main 4 plans */}
-        <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-5">
+        <div className="max-w-6xl mx-auto grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
           {PLANS.map((plan) => (
             <div
               key={plan.name}
@@ -197,7 +170,7 @@ export default async function PricingPage({
             >
               {plan.popular && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
-                  Most Popular
+                  For growing labs
                 </Badge>
               )}
               <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
@@ -276,52 +249,7 @@ export default async function PricingPage({
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-10 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Product</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/features" className="hover:text-foreground transition-colors">Features</Link></li>
-                <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
-                <li><Link href="/demo" className="hover:text-foreground transition-colors">Demo</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Company</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/why-vitros" className="hover:text-foreground transition-colors">Why VitrOS</Link></li>
-                <li><a href="mailto:support@vitroslabs.com" className="hover:text-foreground transition-colors">Contact</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Resources</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
-                <li><Link href="/login" className="hover:text-foreground transition-colors">Sign In</Link></li>
-                <li><Link href="/signup" className="hover:text-foreground transition-colors">Start Free</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Built For</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Tissue Culture Labs</li>
-                <li>Plant Propagation</li>
-                <li>Commercial Nurseries</li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center">
-              <Image src="/logo.png" alt="VitrOS" width={100} height={67} className="h-8 w-auto" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} VitrOS Labs. Powered by Caipher. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
-    </div>
+
+    </PublicPage>
   );
 }

@@ -1,0 +1,167 @@
+
+> app@0.1.0 build
+> prisma generate && next build
+
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v6.19.2) to ./../app/node_modules/@prisma/client in 141ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/york/Endless BioTech/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles:
+   * /Users/york/Endless BioTech/vitros-design/package-lock.json
+
+▲ Next.js 16.1.6 (Turbopack)
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 8.1s
+  Running TypeScript ...
+  Collecting page data using 13 workers ...
+  Generating static pages using 13 workers (0/94) ...
+  Generating static pages using 13 workers (23/94)
+  Generating static pages using 13 workers (46/94)
+  Generating static pages using 13 workers (70/94)
+✓ Generating static pages using 13 workers (94/94) in 313.4ms
+  Finalizing page optimization ...
+
+Route (app)                          Revalidate  Expire
+┌ ○ /
+├ ○ /_not-found
+├ ○ /activity
+├ ○ /admin
+├ ○ /admin/billing
+├ ○ /analytics
+├ ƒ /api/activities
+├ ƒ /api/alerts
+├ ƒ /api/analytics
+├ ƒ /api/api-keys
+├ ƒ /api/assistant
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/auth/change-password
+├ ƒ /api/auth/forgot-password
+├ ƒ /api/auth/register
+├ ƒ /api/auth/reset-password
+├ ƒ /api/billing/checkout
+├ ƒ /api/billing/portal
+├ ƒ /api/billing/status
+├ ƒ /api/clone-lines
+├ ƒ /api/clone-lines/[id]
+├ ƒ /api/clone-lines/[id]/tests
+├ ƒ /api/cron/daily-alerts
+├ ƒ /api/cron/weekly-report
+├ ƒ /api/cultivars
+├ ƒ /api/cultivars/[id]
+├ ƒ /api/environment
+├ ƒ /api/heartbeat
+├ ƒ /api/incentive-config
+├ ƒ /api/inventory
+├ ƒ /api/inventory/[id]
+├ ƒ /api/inventory/[id]/usage
+├ ƒ /api/locations
+├ ƒ /api/locations/[id]
+├ ƒ /api/media-batches
+├ ƒ /api/media-batches/[id]/pour
+├ ƒ /api/media-recipes
+├ ƒ /api/media-recipes/[id]
+├ ƒ /api/photos
+├ ƒ /api/photos/upload
+├ ƒ /api/point-rules
+├ ƒ /api/point-rules/[id]
+├ ƒ /api/protocols
+├ ƒ /api/reports/pdf
+├ ƒ /api/sales-orders
+├ ƒ /api/sales-orders/[id]
+├ ƒ /api/settings
+├ ƒ /api/setup
+├ ƒ /api/shift-notes
+├ ƒ /api/sites
+├ ƒ /api/stations
+├ ƒ /api/stations/[id]
+├ ƒ /api/stats
+├ ƒ /api/stats/analytics
+├ ƒ /api/team-performance
+├ ƒ /api/tech-shifts
+├ ƒ /api/tech-shifts/[id]
+├ ƒ /api/unsubscribe
+├ ƒ /api/users
+├ ƒ /api/users/[id]
+├ ƒ /api/v1/clone-lines
+├ ƒ /api/v1/orders
+├ ƒ /api/v1/vessels
+├ ƒ /api/v1/vessels/[id]
+├ ƒ /api/v1/webhooks
+├ ƒ /api/vessels
+├ ƒ /api/vessels/[id]
+├ ƒ /api/vessels/[id]/advance-stage
+├ ƒ /api/vessels/[id]/health-check
+├ ƒ /api/vessels/[id]/lineage
+├ ƒ /api/vessels/[id]/move
+├ ƒ /api/vessels/[id]/multiply
+├ ƒ /api/vessels/[id]/undo
+├ ƒ /api/vessels/barcode
+├ ƒ /api/vessels/batch
+├ ƒ /api/vessels/due-subculture
+├ ƒ /api/vessels/import
+├ ƒ /api/webhooks/stripe
+├ ○ /assistant
+├ ○ /batch
+├ ○ /batch/create
+├ ○ /batch/multiply
+├ ○ /blog                                    1m      1y
+├ ● /blog/[slug]
+├ ○ /clone-lines
+├ ƒ /clone-lines/[id]
+├ ○ /cultivars
+├ ƒ /cultivars/[id]
+├ ○ /demand-planning
+├ ○ /demo
+├ ○ /environment
+├ ○ /features
+├ ○ /forecasting
+├ ○ /forgot-password
+├ ○ /import
+├ ○ /integrations
+├ ○ /inventory
+├ ƒ /inventory/[id]
+├ ○ /labels
+├ ○ /locations
+├ ƒ /locations/[id]
+├ ○ /login
+├ ○ /media
+├ ƒ /media/[id]
+├ ○ /media/batches
+├ ƒ /multiply/[id]
+├ ○ /notifications
+├ ○ /offline
+├ ○ /onboarding
+├ ƒ /pricing
+├ ○ /protocols
+├ ○ /reports
+├ ○ /reset-password
+├ ○ /robots.txt
+├ ○ /scan
+├ ○ /signup
+├ ○ /sitemap.xml                             1h      1y
+├ ƒ /studio/[[...tool]]
+├ ○ /tasks
+├ ○ /team-performance
+├ ƒ /unsubscribed
+├ ○ /vessels
+├ ƒ /vessels/[id]
+├ ƒ /vessels/[id]/lineage
+└ ○ /why-vitros
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+

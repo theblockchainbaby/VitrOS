@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { StageBadge } from "@/components/status-badge";
 import type { MediaRecipe } from "@/lib/types";
@@ -28,17 +29,20 @@ export default function MediaRecipeDetailPage({ params }: { params: Promise<{ id
   const router = useRouter();
   const [recipe, setRecipe] = useState<MediaRecipe & { _count?: { vessels: number } } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchRecipe = useCallback(() => {
     fetch(`/api/media-recipes/${id}`)
       .then((r) => {
-        if (!r.ok) throw new Error();
+        if (!r.ok) throw new Error(r.status === 404 ? "Media recipe not found." : "Media recipe could not be loaded. Try again.");
         return r.json();
       })
-      .then(setRecipe)
-      .catch(() => setRecipe(null))
+      .then((data) => { setRecipe(data); setLoadError(null); })
+      .catch((error) => setLoadError(error instanceof Error ? error.message : "Media recipe could not be loaded. Try again."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { fetchRecipe(); }, [fetchRecipe]);
 
   const handleDelete = async () => {
     if (!confirm("Deactivate this recipe? It will no longer appear in recipe lists.")) return;
@@ -51,18 +55,19 @@ export default function MediaRecipeDetailPage({ params }: { params: Promise<{ id
     }
   };
 
+  if (loadError) return <PageError message={loadError} retry={() => { setLoading(true); setLoadError(null); fetchRecipe(); }} />;
   if (loading) return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
   if (!recipe) return <div className="text-center py-12 text-muted-foreground">Recipe not found</div>;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="min-w-0 space-y-6 max-w-5xl mx-auto">
       <PageHeader
         title={recipe.name}
         description={`${recipe.baseMedia} base media`}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {recipe.stage && <StageBadge stage={recipe.stage} />}
-            <Button variant="outline" size="sm" onClick={handleDelete}>Deactivate</Button>
+            <Button asChild><Link href="/media/batches">Prepare / pour media</Link></Button>
           </div>
         }
       />
@@ -73,7 +78,7 @@ export default function MediaRecipeDetailPage({ params }: { params: Promise<{ id
           <CardTitle className="text-base">Formulation</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm [&>*]:min-w-0 [&>*]:break-words">
             <span className="text-muted-foreground">Base Media</span>
             <Badge variant="outline">{recipe.baseMedia}</Badge>
             <span className="text-muted-foreground">Target pH</span>
@@ -167,6 +172,10 @@ export default function MediaRecipeDetailPage({ params }: { params: Promise<{ id
           </CardContent>
         </Card>
       )}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+        <Button variant="outline" size="sm" asChild><Link href="/media">Back to media</Link></Button>
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleDelete}>Deactivate record</Button>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -49,26 +50,29 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
   const router = useRouter();
   const [item, setItem] = useState<InventoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [useDialogOpen, setUseDialogOpen] = useState(false);
   const [restockDialogOpen, setRestockDialogOpen] = useState(false);
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchItem = () => {
+  const fetchItem = useCallback(() => {
+    setLoadError(null);
+    setLoading(true);
     fetch(`/api/inventory/${id}`)
       .then((r) => {
-        if (!r.ok) throw new Error();
+        if (!r.ok) throw new Error(r.status === 404 ? "Inventory item not found." : "Inventory item could not be loaded. Try again.");
         return r.json();
       })
       .then(setItem)
-      .catch(() => setItem(null))
+      .catch((error) => setLoadError(error instanceof Error ? error.message : "Inventory item could not be loaded. Try again."))
       .finally(() => setLoading(false));
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchItem();
-  }, [id]);
+  }, [fetchItem]);
 
   const recordUsage = async (isRestock: boolean) => {
     const qty = parseFloat(quantity);
@@ -98,6 +102,8 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
         const err = await res.json();
         toast.error(err.error || "Failed");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setSubmitting(false);
     }
@@ -112,26 +118,30 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  if (loadError) return <PageError message={loadError} retry={fetchItem} />;
   if (loading) return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
   if (!item) return <div className="text-center py-12 text-muted-foreground">Item not found</div>;
 
   const isLow = item.reorderLevel != null && item.currentStock <= item.reorderLevel;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="min-w-0 space-y-6 max-w-5xl mx-auto">
       <PageHeader
         title={item.name}
         description={CATEGORY_LABELS[item.category] || item.category}
         actions={
-          <div className="flex gap-2">
-            {isLow && <Badge variant="destructive">Low Stock</Badge>}
-            <Button variant="outline" size="sm" onClick={handleDelete}>Delete</Button>
+          <div className="flex flex-wrap gap-2">
+            {isLow && <Badge variant="outline" className="border-amber-500/30 text-amber-700 dark:text-amber-300">Low stock</Badge>}
           </div>
         }
       />
 
+      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card p-4">
+        <div><p className="text-sm text-muted-foreground">Available stock</p><p className="mt-1 text-2xl font-semibold tabular-nums">{item.currentStock} <span className="text-base font-normal">{item.unit}</span></p></div>
+        <div><p className="text-sm text-muted-foreground">Reorder at</p><p className="mt-1 text-2xl font-semibold tabular-nums">{item.reorderLevel ?? "—"} <span className="text-base font-normal">{item.reorderLevel != null ? item.unit : ""}</span></p></div>
+      </div>
       {/* Quick actions */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Dialog open={useDialogOpen} onOpenChange={setUseDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">Record Usage</Button>
@@ -140,12 +150,12 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
             <DialogHeader><DialogTitle>Record Usage</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Quantity Used ({item.unit})</Label>
-                <Input type="number" step="0.1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="mt-1" />
+                <Label htmlFor="inventory-id-field-1">Quantity Used ({item.unit})</Label>
+                <Input id="inventory-id-field-1" type="number" step="0.1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="mt-1" />
               </div>
               <div>
-                <Label>Reason</Label>
-                <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Media prep, experiment, etc." className="mt-1" />
+                <Label htmlFor="inventory-id-field-2">Reason</Label>
+                <Input id="inventory-id-field-2" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Media prep, experiment, etc." className="mt-1" />
               </div>
               <Button onClick={() => recordUsage(false)} disabled={submitting} className="w-full">
                 {submitting ? "Saving..." : "Record Usage"}
@@ -162,12 +172,12 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
             <DialogHeader><DialogTitle>Restock</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Quantity to Add ({item.unit})</Label>
-                <Input type="number" step="0.1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="mt-1" />
+                <Label htmlFor="inventory-id-field-3">Quantity to Add ({item.unit})</Label>
+                <Input id="inventory-id-field-3" type="number" step="0.1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="mt-1" />
               </div>
               <div>
-                <Label>Notes</Label>
-                <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="PO number, vendor, etc." className="mt-1" />
+                <Label htmlFor="inventory-id-field-4">Notes</Label>
+                <Input id="inventory-id-field-4" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="PO number, vendor, etc." className="mt-1" />
               </div>
               <Button onClick={() => recordUsage(true)} disabled={submitting} className="w-full">
                 {submitting ? "Saving..." : "Add Stock"}
@@ -181,13 +191,13 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
       <Card>
         <CardHeader><CardTitle className="text-base">Item Details</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm [&>*]:min-w-0 [&>*]:break-words">
             <span className="text-muted-foreground">Name</span>
             <span className="font-medium">{item.name}</span>
             <span className="text-muted-foreground">Category</span>
             <Badge variant="outline">{CATEGORY_LABELS[item.category] || item.category}</Badge>
             <span className="text-muted-foreground">Current Stock</span>
-            <span className={`font-mono text-lg ${isLow ? "text-red-500 font-bold" : ""}`}>
+            <span className={`font-mono text-lg ${isLow ? "text-amber-700 dark:text-amber-300 font-semibold" : ""}`}>
               {item.currentStock} {item.unit}
             </span>
             <span className="text-muted-foreground">Reorder Level</span>
@@ -258,6 +268,10 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
           )}
         </CardContent>
       </Card>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+        <Button variant="outline" size="sm" asChild><Link href="/inventory">Back to inventory</Link></Button>
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleDelete}>Delete record</Button>
+      </div>
     </div>
   );
 }

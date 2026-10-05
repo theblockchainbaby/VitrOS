@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import Image from "next/image";
+import { getSignupPlan } from "@/lib/signup-plan";
+import { AuthShell } from "@/components/auth-shell";
+import { PasswordInput } from "@/components/password-input";
 
 export default function SignupPage() {
   return (
@@ -20,7 +22,8 @@ export default function SignupPage() {
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const selectedPlan = searchParams.get("plan");
+  const plan = getSignupPlan(searchParams.get("plan"), searchParams.get("interval"));
+  const selectedPlan = plan?.key;
   const billingInterval = searchParams.get("interval") === "annual" ? "annual" : "monthly";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,6 +31,8 @@ function SignupForm() {
   const [labName, setLabName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +59,8 @@ function SignupForm() {
         return;
       }
 
+      setAccountCreated(true);
+
       // Auto sign-in after registration
       const result = await signIn("credentials", {
         email,
@@ -67,8 +74,10 @@ function SignupForm() {
         return;
       }
 
+      setSignedIn(true);
+
       // If a plan was selected from pricing, redirect to checkout
-      if (selectedPlan && selectedPlan !== "free") {
+      if (selectedPlan) {
         try {
           const checkoutRes = await fetch("/api/billing/checkout", {
             method: "POST",
@@ -80,12 +89,15 @@ function SignupForm() {
           });
           const checkoutData = await checkoutRes.json();
           if (checkoutData.url) {
-            window.location.href = checkoutData.url;
+            window.location.assign(checkoutData.url);
             return;
           }
+          setError("Your workspace is ready, but checkout could not be opened. Continue setup and choose your plan in Billing.");
         } catch {
-          // Fall through to onboarding if checkout fails
+          setError("Your workspace is ready, but checkout could not be reached. Continue setup and choose your plan in Billing.");
         }
+        setLoading(false);
+        return;
       }
 
       router.push("/onboarding");
@@ -97,22 +109,18 @@ function SignupForm() {
   };
 
   return (
-    <div className="w-full max-w-md mx-4">
-      <div className="rounded-xl border bg-card p-8 shadow-sm">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Image src="/logo.png" alt="VitrOS" width={500} height={488} className="h-14 w-auto" />
-        </div>
-        <p className="text-center text-muted-foreground mb-6">
-          Start managing your tissue culture lab
-        </p>
+    <AuthShell title="Create your lab workspace" description="Start tracking your cultures with a 30-day free trial.">
 
+        <div className="mb-6 rounded-lg border bg-muted/30 p-4 text-sm">
+          {plan ? <><p className="font-medium">{plan.name} · {plan.interval === "annual" ? "Annual billing" : "Monthly billing"}</p><p className="mt-1 text-muted-foreground">${plan.price.toLocaleString()} per {plan.interval === "annual" ? "year" : "month"}. Review payment details and any trial eligibility in checkout before subscribing.</p><Link href="/pricing" className="mt-2 inline-block text-primary underline underline-offset-4">Compare plans</Link></> : <><p className="font-medium">Your 30-day trial</p><p className="mt-1 text-muted-foreground">No credit card needed to create your workspace. Choose a paid plan when you’re ready.</p></>}
+        </div>
         {error && (
-          <div className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 mb-4">
+          <div role="alert" className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 mb-4">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSignup} className="space-y-4">
+        {accountCreated && error ? <Button asChild className="w-full"><Link href={signedIn ? "/onboarding" : "/login"}>{signedIn ? "Continue setup" : "Go to sign in"}</Link></Button> : <form aria-busy={loading} onSubmit={handleSignup} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="labName">Lab / Organization Name</Label>
             <Input
@@ -132,7 +140,7 @@ function SignupForm() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Jane Smith"
+              placeholder="Your full name"
               required
               autoComplete="name"
             />
@@ -151,9 +159,9 @@ function SignupForm() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
+
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 8 characters"
@@ -165,7 +173,7 @@ function SignupForm() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Creating your lab..." : "Create Account"}
           </Button>
-        </form>
+        </form>}
 
         <p className="text-center text-sm text-muted-foreground mt-6">
           Already have an account?{" "}
@@ -173,7 +181,6 @@ function SignupForm() {
             Sign in
           </Link>
         </p>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

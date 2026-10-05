@@ -1,26 +1,15 @@
-import type { Metadata } from "next";
+import { PublicPage } from "@/components/public-site";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, FileText, Scan, ShieldAlert, Clock, BarChart3, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = {
-  title: "Why VitrOS | Modern Software for Plant Propagation Labs",
+export const metadata = publicPageMetadata({
+  title: "Replace Tissue Culture Spreadsheets with VitrOS",
   description:
-    "Tired of outdated lab software? VitrOS replaces spreadsheets, paper logs, and legacy systems with automated tracking built for tissue culture operations.",
-  keywords: [
-    "automated plant propagation",
-    "tissue culture equipment",
-    "plant propagation automation",
-    "tissue culture lab software",
-    "lab management software",
-  ],
-  openGraph: {
-    title: "Why VitrOS | Modern Software for Plant Propagation Labs",
-    description:
-      "Tired of outdated lab software? VitrOS replaces spreadsheets, paper logs, and legacy systems with automated tracking built for tissue culture operations.",
-  },
-};
+    "Move tissue culture records from spreadsheets and paper logs into connected vessel tracking, lineage, media records, and shared lab workflows with VitrOS.",
+  path: "/why-vitros",
+});
 
 const PAIN_POINTS = [
   {
@@ -35,7 +24,7 @@ const PAIN_POINTS = [
     problem: "Contamination found too late",
     solution: "Real-time contamination analytics and alerts",
     detail:
-      "Most labs discover contamination trends weeks after the damage is done. VitrOS tracks contamination by cultivar, location, media batch, and technician — and alerts you when rates spike.",
+      "Separate records can make it difficult to spot contamination patterns. VitrOS tracks contamination by cultivar, location, media batch, and technician — and alerts you when rates spike.",
   },
   {
     icon: Clock,
@@ -47,50 +36,34 @@ const PAIN_POINTS = [
   {
     icon: Layers,
     problem: "Slow, manual data entry",
-    solution: "3-second barcode scanning from any phone",
+    solution: "Barcode scanning from your phone",
     detail:
-      "Manual vessel logging takes ~15 seconds per vessel. Multiply that by hundreds or thousands of vessels per day. VitrOS cuts that to 3 seconds with phone-based barcode scanning — no dedicated hardware required.",
+      "Phone-camera and barcode-scanner input connects each vessel to its record. Update cultures at the bench without transcribing the same information into a separate log.",
   },
 ];
 
 const COMPARISONS = [
-  { label: "Spreadsheets", issues: ["No real-time data", "Version conflicts", "No barcode support", "Manual everything"] },
-  { label: "Paper Logs", issues: ["Unsearchable", "Lost notebooks", "No analytics", "No audit trail"] },
-  { label: "Custom Software", issues: ["Developer dependency", "No updates", "No support", "Breaks on OS upgrades"] },
-  { label: "VitrOS", wins: ["Real-time vessel tracking", "Phone-based scanning", "Built-in analytics", "Always up to date"] },
+  { label: "Spreadsheets", issues: ["Flexible general-purpose records", "Requires a shared file process", "Scanning needs extra tools", "Manual workflow coordination"] },
+  { label: "Paper Logs", issues: ["Familiar at the bench", "Physical storage and handoffs", "Manual reporting", "History across separate logs"] },
+  { label: "Custom Software", issues: ["Tailored to your requirements", "Needs ongoing maintenance", "Support depends on the team", "Integration work to plan"] },
+  { label: "VitrOS", wins: ["Connected culture records", "Phone-based scanning", "Built-in lab analytics", "Shared workflow history"] },
 ];
 
 export default function WhyVitrOSPage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Nav */}
-      <nav className="border-b sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="VitrOS" width={500} height={488} className="h-14 w-auto" />
-          </Link>
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Link href="/features"><Button variant="ghost" size="sm">Features</Button></Link>
-            <Link href="/pricing"><Button variant="ghost" size="sm">Pricing</Button></Link>
-            <Link href="/blog" className="hidden sm:inline-flex"><Button variant="ghost" size="sm">Blog</Button></Link>
-            <Link href="/demo" className="hidden sm:inline-flex"><Button variant="ghost" size="sm">Demo</Button></Link>
-            <Link href="/login"><Button variant="ghost" size="sm">Sign In</Button></Link>
-            <Link href="/signup"><Button size="sm">Start Free</Button></Link>
-          </div>
-        </div>
-      </nav>
+    <PublicPage>
 
       {/* Hero */}
-      <section className="py-20 md:py-28 px-4">
+      <section className="py-16 md:py-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-6">
-            Built for Labs That Have Outgrown Spreadsheets
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight mb-6">
+            Tissue culture records beyond spreadsheets
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             Most tissue culture labs rely on paper, Excel, or aging custom software that can&apos;t keep up.
             VitrOS is modern plant propagation automation software designed for how labs actually operate today.
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             <Link href="/signup">
               <Button size="lg">Start Free <ArrowRight className="h-4 w-4 ml-1" /></Button>
             </Link>
@@ -109,18 +82,18 @@ export default function WhyVitrOSPage() {
           </h2>
           <p className="text-muted-foreground text-lg text-center mb-14 max-w-2xl mx-auto">
             Automated plant propagation starts with the right software.
-            Here&apos;s what labs tell us they were dealing with before VitrOS.
+            Connect the record-keeping, quality review, and production planning your team already does.
           </p>
           <div className="space-y-8">
             {PAIN_POINTS.map((p) => (
               <div key={p.problem} className="bg-background rounded-xl border p-6 md:p-8">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
-                    <p.icon className="h-6 w-6 text-destructive" />
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <p.icon className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-2">
-                      <h3 className="font-semibold text-lg line-through text-muted-foreground">{p.problem}</h3>
+                      <h3 className="font-semibold text-lg text-muted-foreground">{p.problem}</h3>
                       <ArrowRight className="h-4 w-4 text-primary hidden sm:block" />
                       <h3 className="font-semibold text-lg text-primary">{p.solution}</h3>
                     </div>
@@ -154,7 +127,7 @@ export default function WhyVitrOSPage() {
                       {c.wins ? (
                         <span className="text-primary mt-0.5">&#10003;</span>
                       ) : (
-                        <span className="text-destructive mt-0.5">&#10007;</span>
+                        <span className="text-muted-foreground mt-0.5">&#10007;</span>
                       )}
                       <span className={c.wins ? "" : "text-muted-foreground"}>{item}</span>
                     </li>
@@ -170,7 +143,7 @@ export default function WhyVitrOSPage() {
       <section className="py-16 md:py-24 px-4 bg-muted/30">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-center mb-4">
-            Who Uses VitrOS
+            Who VitrOS Is Built For
           </h2>
           <p className="text-muted-foreground text-lg text-center mb-12 max-w-2xl mx-auto">
             Any lab that propagates plants at scale — whether tissue culture, nursery propagation, or research.
@@ -187,7 +160,7 @@ export default function WhyVitrOSPage() {
               <BarChart3 className="h-8 w-8 mx-auto mb-3 text-primary" />
               <h3 className="font-semibold mb-2">Large Nurseries</h3>
               <p className="text-muted-foreground text-sm">
-                High-throughput propagation operations that need to track millions of jars and plugs.
+                Nursery teams managing tissue culture propagation and the production stages that follow.
               </p>
             </div>
             <div className="bg-background rounded-xl border p-6 text-center">
@@ -208,10 +181,9 @@ export default function WhyVitrOSPage() {
             Ready to upgrade from spreadsheets?
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Start free, see results in your first week. VitrOS is the plant propagation automation
-            platform your lab has been waiting for.
+            Start a workspace and try the vessel, quality, and planning workflows with your team.
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             <Link href="/signup">
               <Button size="lg">Start Free <ArrowRight className="h-4 w-4 ml-1" /></Button>
             </Link>
@@ -222,52 +194,7 @@ export default function WhyVitrOSPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-10 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Product</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/features" className="hover:text-foreground transition-colors">Features</Link></li>
-                <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
-                <li><Link href="/demo" className="hover:text-foreground transition-colors">Demo</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Company</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/why-vitros" className="hover:text-foreground transition-colors">Why VitrOS</Link></li>
-                <li><a href="mailto:support@vitroslabs.com" className="hover:text-foreground transition-colors">Contact</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Resources</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
-                <li><Link href="/login" className="hover:text-foreground transition-colors">Sign In</Link></li>
-                <li><Link href="/signup" className="hover:text-foreground transition-colors">Start Free</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Built For</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Tissue Culture Labs</li>
-                <li>Plant Propagation</li>
-                <li>Commercial Nurseries</li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center">
-              <Image src="/logo.png" alt="VitrOS" width={100} height={67} className="h-8 w-auto" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} VitrOS Labs. Powered by Caipher. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
-    </div>
+
+    </PublicPage>
   );
 }

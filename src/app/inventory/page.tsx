@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { INVENTORY_CATEGORIES } from "@/lib/constants";
 import type { InventoryItem } from "@/lib/types";
@@ -23,9 +24,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function InventoryPage() {
-  const router = useRouter();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showLowStock, setShowLowStock] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -47,10 +48,18 @@ export default function InventoryPage() {
     const params = new URLSearchParams();
     if (categoryFilter !== "all") params.set("category", categoryFilter);
     if (showLowStock) params.set("lowStock", "true");
+    setLoadError(null);
+    try {
     const res = await fetch(`/api/inventory?${params}`);
+    if (!res.ok) throw new Error();
     const data = await res.json();
     setItems(data);
-    setLoading(false);
+
+    } catch {
+      setLoadError("Inventory could not be loaded. Retry to see this view.");
+    } finally {
+      setLoading(false);
+    }
   }, [categoryFilter, showLowStock]);
 
   useEffect(() => {
@@ -103,20 +112,25 @@ export default function InventoryPage() {
         const err = await res.json();
         toast.error(err.error || "Failed");
       }
+    } catch {
+      toast.error("The save could not be confirmed. Your entries have been kept.");
     } finally {
       setCreating(false);
     }
   };
+
+  const hasFilters = categoryFilter !== "all" || showLowStock;
+  const resetFilters = () => { setCategoryFilter("all"); setShowLowStock(false); };
 
   const lowStockCount = items.filter((i) =>
     i.reorderLevel != null && i.currentStock <= i.reorderLevel
   ).length;
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         title="Inventory"
-        description={`${items.length} items tracked`}
+        description="Monitor stock levels, record use and plan replenishment"
         actions={
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -127,15 +141,15 @@ export default function InventoryPage() {
                 <DialogTitle>Add Inventory Item</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Name</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
+                    <Label htmlFor="inventory-field-1">Name</Label>
+                    <Input id="inventory-field-1" value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label>Category</Label>
+                    <Label htmlFor="inventory-field-2">Category</Label>
                     <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectTrigger id="inventory-field-2" className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
                       <SelectContent>
                         {INVENTORY_CATEGORIES.map((c) => (
                           <SelectItem key={c} value={c}>{CATEGORY_LABELS[c] || c}</SelectItem>
@@ -144,38 +158,38 @@ export default function InventoryPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Unit</Label>
-                    <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="mL, g, ea" className="mt-1" />
+                    <Label htmlFor="inventory-field-3">Unit</Label>
+                    <Input id="inventory-field-3" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="mL, g, ea" className="mt-1" />
                   </div>
                   <div>
-                    <Label>Current Stock</Label>
-                    <Input type="number" value={currentStock} onChange={(e) => setCurrentStock(e.target.value)} className="mt-1" />
+                    <Label htmlFor="inventory-field-4">Current Stock</Label>
+                    <Input id="inventory-field-4" type="number" value={currentStock} onChange={(e) => setCurrentStock(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label>Reorder Level</Label>
-                    <Input type="number" value={reorderLevel} onChange={(e) => setReorderLevel(e.target.value)} className="mt-1" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Supplier</Label>
-                    <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} className="mt-1" />
-                  </div>
-                  <div>
-                    <Label>SKU</Label>
-                    <Input value={sku} onChange={(e) => setSku(e.target.value)} className="mt-1" />
+                    <Label htmlFor="inventory-field-5">Reorder Level</Label>
+                    <Input id="inventory-field-5" type="number" value={reorderLevel} onChange={(e) => setReorderLevel(e.target.value)} className="mt-1" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Cost per Unit ($)</Label>
-                    <Input type="number" step="0.01" value={costPerUnit} onChange={(e) => setCostPerUnit(e.target.value)} className="mt-1" />
+                    <Label htmlFor="inventory-field-6">Supplier</Label>
+                    <Input id="inventory-field-6" value={supplier} onChange={(e) => setSupplier(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label>Storage Location</Label>
-                    <Input value={storageLocation} onChange={(e) => setStorageLocation(e.target.value)} className="mt-1" />
+                    <Label htmlFor="inventory-field-7">SKU</Label>
+                    <Input id="inventory-field-7" value={sku} onChange={(e) => setSku(e.target.value)} className="mt-1" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
+                  <div>
+                    <Label htmlFor="inventory-field-8">Cost per Unit ($)</Label>
+                    <Input id="inventory-field-8" type="number" step="0.01" value={costPerUnit} onChange={(e) => setCostPerUnit(e.target.value)} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="inventory-field-9">Storage Location</Label>
+                    <Input id="inventory-field-9" value={storageLocation} onChange={(e) => setStorageLocation(e.target.value)} className="mt-1" />
                   </div>
                 </div>
                 <Button onClick={handleCreate} disabled={creating} className="w-full">
@@ -188,7 +202,7 @@ export default function InventoryPage() {
       />
 
       {/* Low stock alert */}
-      {lowStockCount > 0 && !showLowStock && (
+      {!loading && !loadError && lowStockCount > 0 && !showLowStock && (
         <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
           <CardContent className="pt-4 flex items-center justify-between">
             <div>
@@ -204,9 +218,9 @@ export default function InventoryPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-48" aria-label="Inventory category"><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 {INVENTORY_CATEGORIES.map((c) => (
@@ -217,18 +231,21 @@ export default function InventoryPage() {
             <Button
               variant={showLowStock ? "default" : "outline"}
               size="sm"
+              aria-pressed={showLowStock}
               onClick={() => setShowLowStock(!showLowStock)}
             >
               Low Stock Only
             </Button>
+            {hasFilters && <Button variant="ghost" size="sm" onClick={resetFilters}>Reset filters</Button>}
           </div>
+          <p className="mt-3 text-xs text-muted-foreground">{!loading && !loadError ? `${items.length} items in this view` : "Loading inventory…"}</p>
         </CardContent>
       </Card>
 
-      {loading ? (
+      {loadError ? <PageError message={loadError} retry={fetchItems} /> : loading ? (
         <p className="text-center text-muted-foreground py-8">Loading...</p>
       ) : items.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">No inventory items. Add one to get started.</p>
+        <p className="text-center text-muted-foreground py-8">{hasFilters ? "No items match these filters. Reset the filters to see all inventory." : "No inventory items yet. Add an item to track stock and usage."}</p>
       ) : (
         <div className="rounded-md border">
           <Table>
@@ -247,10 +264,10 @@ export default function InventoryPage() {
               {items.map((item) => {
                 const isLow = item.reorderLevel != null && item.currentStock <= item.reorderLevel;
                 return (
-                  <TableRow key={item.id} className="cursor-pointer" onClick={() => router.push(`/inventory/${item.id}`)}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium"><Link href={`/inventory/${item.id}`} className="text-primary hover:underline underline-offset-4">{item.name}</Link>{isLow && <span className="block text-xs text-amber-700 dark:text-amber-300">Low stock</span>}</TableCell>
                     <TableCell><Badge variant="outline">{CATEGORY_LABELS[item.category] || item.category}</Badge></TableCell>
-                    <TableCell className={`text-right font-mono ${isLow ? "text-red-500 font-bold" : ""}`}>
+                    <TableCell className={`text-right font-mono ${isLow ? "text-amber-700 dark:text-amber-300 font-semibold" : ""}`}>
                       {item.currentStock}
                     </TableCell>
                     <TableCell>{item.unit}</TableCell>

@@ -253,19 +253,21 @@ export function BarcodeScanner({ onScan, placeholder = "Scan or type barcode..."
       <div className="flex gap-2">
         <Button
           variant={mode === "camera" ? "default" : "outline"}
+          aria-pressed={mode === "camera"}
           onClick={() => { setMode("camera"); if (!scanning) startCamera(); }}
-          className="flex-1"
+          className="min-h-11 flex-1"
         >
           <Camera className="mr-2 size-4" />
           Camera
         </Button>
         <Button
           variant={mode === "manual" ? "default" : "outline"}
+          aria-pressed={mode === "manual"}
           onClick={() => { setMode("manual"); stopCamera(); }}
-          className="flex-1"
+          className="min-h-11 flex-1"
         >
           <Keyboard className="mr-2 size-4" />
-          Manual Entry
+          Scanner / type
         </Button>
       </div>
 
@@ -321,7 +323,7 @@ export function BarcodeScanner({ onScan, placeholder = "Scan or type barcode..."
             </p>
           )}
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg space-y-2">
+            <div role="alert" className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg space-y-2">
               <p>{error}</p>
               <Button variant="outline" size="sm" onClick={startCamera}>
                 Try Again
@@ -337,13 +339,17 @@ export function BarcodeScanner({ onScan, placeholder = "Scan or type barcode..."
           value={manualCode}
           onChange={(e) => setManualCode(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 text-lg h-12"
+          className="min-w-0 flex-1 font-mono text-lg h-12"
+          aria-label="Vessel barcode"
+          autoComplete="off"
+          spellCheck={false}
           autoFocus={mode === "manual"}
         />
         <Button type="submit" size="lg" disabled={!manualCode.trim()}>
-          Go
+          Look up
         </Button>
       </form>
+      <p className="text-sm text-muted-foreground">For a USB or Bluetooth scanner, focus the barcode field and use an Enter suffix. A lookup confirms a record; changes are saved separately.</p>
     </div>
   );
 }

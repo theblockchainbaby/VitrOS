@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StageBadge, HealthBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/page-header";
+import { PageError, PageLoading } from "@/components/page-state";
+import { fetchWorkspaceJSON } from "@/lib/workspace-data";
+import { STAGE_ORDER, STAGE_COLORS } from "@/lib/design-tokens";
 import { STAGE_LABELS } from "@/lib/constants";
 import { exportToCSV } from "@/lib/csv-export";
 import { formatDistanceToNow } from "date-fns";
@@ -20,7 +23,7 @@ import {
   AreaChart, Area, Legend,
 } from "recharts";
 
-const CONTAMINATION_COLORS = ["#ef4444", "#f97316", "#eab308", "#a855f7"];
+const CONTAMINATION_COLORS = ["var(--status-critical)", "var(--status-warning)", "var(--chart-4)", "var(--chart-5)"];
 
 interface AnalyticsData {
   period: string;
@@ -38,118 +41,60 @@ export default function Dashboard() {
   const [period, setPeriod] = useState("month");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const [error, setError] = useState(false);
+  const loadData = useCallback(async () => {
     setLoading(true);
-    Promise.all([
-      fetch("/api/stats").then((r) => r.json()),
-      fetch(`/api/stats/analytics?period=${period}`).then((r) => r.json()),
-    ])
-      .then(([s, a]) => {
-        setStats(s);
-        setAnalytics(a);
-      })
-      .finally(() => setLoading(false));
+    setError(false);
+    try {
+      const [nextStats, nextAnalytics] = await Promise.all([
+        fetchWorkspaceJSON<DashboardStats>("/api/stats"),
+        fetchWorkspaceJSON<AnalyticsData>(`/api/stats/analytics?period=${period}`),
+      ]);
+      if (typeof nextStats.activeVessels !== "number" || typeof nextAnalytics.contaminationRate !== "number") throw new Error("Incomplete dashboard data");
+      setStats(nextStats);
+      setAnalytics(nextAnalytics);
+    } catch { setError(true); }
+    finally { setLoading(false); }
   }, [period]);
+  useEffect(() => { void loadData(); }, [loadData]);
+  if (loading || error || !stats) return <div className="space-y-6">
+    <PageHeader title="Today" description="Your lab’s work, exceptions and production at a glance." />
+    {loading ? <PageLoading label="Loading your lab’s work…" /> : <PageError message="Your production summary is unavailable. Try again to see current counts and priorities." retry={loadData} />}
+  </div>;
 
-  if (loading) return (
-    <div className="space-y-4">
-      <PageHeader title="Dashboard" description="Track vessels, spot contamination, plan subcultures" />
-      <div className="text-center py-12 text-muted-foreground">Loading dashboard...</div>
-    </div>
-  );
-  if (!stats) return (
-    <div className="space-y-4">
-      <PageHeader title="Dashboard" description="Track vessels, spot contamination, plan subcultures" />
-      <div className="text-center py-12 text-muted-foreground">Failed to load stats</div>
-    </div>
-  );
-
-  const stageData = (stats.vesselsByStage || []).map((s) => ({
+  const stageData = [...(stats.vesselsByStage || [])].sort((a, b) => STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage)).map((s) => ({
     name: STAGE_LABELS[s.stage] || s.stage,
     value: s.count,
+    color: STAGE_COLORS[s.stage],
   }));
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Dashboard"
-        description="Track vessels, spot contamination, plan subcultures"
+        title="Today"
+        description="Your lab’s work, exceptions and production at a glance."
         actions={
-          <Select value={period} onValueChange={setPeriod}>
+          <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">Analysis period</span><Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="week">Week</SelectItem>
               <SelectItem value="month">Month</SelectItem>
               <SelectItem value="quarter">Quarter</SelectItem>
             </SelectContent>
-          </Select>
+          </Select></div>
         }
       />
-
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <KPICard title="Active Vessels" value={stats.activeVessels} />
-        <KPICard title="Media Prep" value={stats.mediaPrepVessels} />
-        <KPICard title="Total Explants" value={stats.totalExplants} />
-        <KPICard title="Total Vessels" value={stats.totalVessels} />
-        <KPICard
-          title="Contamination"
-          value={`${analytics?.contaminationRate ?? 0}%`}
-          alert={(analytics?.contaminationRate ?? 0) > 5}
-        />
-        <KPICard title="Cultivars" value={stats.vesselsByCultivar.length} />
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Button variant="outline" className="h-auto py-3 justify-start" asChild>
-          <Link href="/scan">
-            <ScanBarcode className="size-4 mr-2 text-blue-500" />
-            <div className="text-left">
-              <p className="text-sm font-medium">Scan Vessel</p>
-              <p className="text-xs text-muted-foreground">Create or update</p>
-            </div>
-          </Link>
-        </Button>
-        <Button variant="outline" className="h-auto py-3 justify-start" asChild>
-          <Link href="/batch">
-            <Layers className="size-4 mr-2 text-green-500" />
-            <div className="text-left">
-              <p className="text-sm font-medium">Batch Ops</p>
-              <p className="text-xs text-muted-foreground">Advance, move, check</p>
-            </div>
-          </Link>
-        </Button>
-        <Button variant="outline" className="h-auto py-3 justify-start" asChild>
-          <Link href="/tasks">
-            <CalendarClock className="size-4 mr-2 text-amber-500" />
-            <div className="text-left">
-              <p className="text-sm font-medium">Daily Tasks</p>
-              <p className="text-xs text-muted-foreground">Morning briefing</p>
-            </div>
-          </Link>
-        </Button>
-        <Button variant="outline" className="h-auto py-3 justify-start" asChild>
-          <Link href="/demand-planning">
-            <ShoppingCart className="size-4 mr-2 text-purple-500" />
-            <div className="text-left">
-              <p className="text-sm font-medium">Demand Planning</p>
-              <p className="text-xs text-muted-foreground">Orders & schedule</p>
-            </div>
-          </Link>
-        </Button>
-      </div>
 
       {/* Subculture reminders */}
       {stats.subcultureDue && (stats.subcultureDue.overdue > 0 || stats.subcultureDue.today > 0) && (
         <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-base text-amber-900 dark:text-amber-200">
-              Subculture Reminders
+              Needs attention · subcultures
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-6 text-sm">
+            <div className="flex flex-wrap gap-4 text-sm"><Link href="/tasks" className="font-medium underline underline-offset-4">Review daily tasks</Link>
               {stats.subcultureDue.overdue > 0 && (
                 <div className="text-red-600 dark:text-red-400 font-medium">
                   {stats.subcultureDue.overdue} overdue
@@ -170,6 +115,144 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* Ready to pull + Recent activity */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {stats.readyToMultiply.length > 0 && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="text-base">Ready to multiply ({stats.readyToMultiply.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {stats.readyToMultiply.slice(0, 8).map((v) => (
+                  <Link
+                    key={v.id}
+                    href={`/vessels/${v.id}`}
+                    className="flex min-w-0 flex-wrap items-center justify-between gap-2 p-3 rounded-md bg-background border hover:border-primary/50 transition-colors"
+                  >
+                    <div className="min-w-0 [overflow-wrap:anywhere]">
+                      <span className="font-mono text-sm font-medium">{v.barcode}</span>
+                      <span className="text-sm text-muted-foreground ml-2">{v.cultivarName}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(v.updatedAt), { addSuffix: true })}
+                    </span>
+                  </Link>
+                ))}
+                {stats.readyToMultiply.length > 8 && <Link href="/tasks" className="block pt-2 text-sm font-medium text-primary underline underline-offset-4">View all {stats.readyToMultiply.length} vessels in daily tasks</Link>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className={stats.readyToMultiply.length > 0 ? "" : "md:col-span-2"}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Recent activity</CardTitle>
+              <div className="flex gap-2 items-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const rows = stats.recentActivities.map((a) => ({
+                      type: a.type,
+                      vessel: a.vessel?.barcode ?? "",
+                      user: a.user?.name ?? "",
+                      notes: a.notes ?? "",
+                      date: a.createdAt,
+                    }));
+                    exportToCSV(rows, "activity-export");
+                  }}
+                >
+                  CSV
+                </Button>
+                <Link href="/activity" className="text-sm text-muted-foreground hover:underline">
+                  View all
+                </Link>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {stats.recentActivities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No activity yet</p>
+            ) : (
+              <div className="space-y-3">
+                {stats.recentActivities.slice(0, 5).map((a) => (
+                  <div key={a.id} className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      {a.vessel && (
+                        <Link href={`/vessels/${a.vessel.id}`} className="font-mono text-sm hover:underline">
+                          {a.vessel.barcode}
+                        </Link>
+                      )}
+                      <p className="text-xs text-muted-foreground truncate">
+                        {a.type.replace(/_/g, " ")}{a.user ? ` by ${a.user.name}` : ""}{a.notes ? ` — ${a.notes}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <KPICard title="Active Vessels" value={stats.activeVessels} />
+        <KPICard title="Media Prep" value={stats.mediaPrepVessels} />
+        <KPICard title="Total Explants" value={stats.totalExplants} />
+        <KPICard
+          title="Contamination"
+          value={`${analytics?.contaminationRate ?? 0}%`}
+          alert={(analytics?.contaminationRate ?? 0) > 5}
+        />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <Button variant="outline" className="h-auto py-3 justify-start" asChild>
+          <Link href="/scan">
+            <ScanBarcode className="size-4 mr-2 text-primary" />
+            <div className="text-left">
+              <p className="text-sm font-medium">Scan Vessel</p>
+              <p className="text-xs text-muted-foreground">Create or update</p>
+            </div>
+          </Link>
+        </Button>
+        <Button variant="outline" className="h-auto py-3 justify-start" asChild>
+          <Link href="/batch">
+            <Layers className="size-4 mr-2 text-primary" />
+            <div className="text-left">
+              <p className="text-sm font-medium">Batch Ops</p>
+              <p className="text-xs text-muted-foreground">Advance, move, check</p>
+            </div>
+          </Link>
+        </Button>
+        <Button variant="outline" className="h-auto py-3 justify-start" asChild>
+          <Link href="/tasks">
+            <CalendarClock className="size-4 mr-2 text-amber-500" />
+            <div className="text-left">
+              <p className="text-sm font-medium">Daily Tasks</p>
+              <p className="text-xs text-muted-foreground">Morning briefing</p>
+            </div>
+          </Link>
+        </Button>
+        <Button variant="outline" className="h-auto py-3 justify-start" asChild>
+          <Link href="/demand-planning">
+            <ShoppingCart className="size-4 mr-2 text-primary" />
+            <div className="text-left">
+              <p className="text-sm font-medium">Demand Planning</p>
+              <p className="text-xs text-muted-foreground">Orders & schedule</p>
+            </div>
+          </Link>
+        </Button>
+      </div>
+
+      <details className="group rounded-xl border bg-card p-4 sm:p-5"><summary className="cursor-pointer text-base font-semibold">Production insights <span className="ml-2 text-xs font-normal text-muted-foreground">Pipeline, health and capacity</span></summary><div className="mt-5 space-y-6">
       {/* Charts row 1: Pipeline + Growth Trends */}
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
@@ -186,7 +269,7 @@ export default function Dashboard() {
                   <XAxis type="number" />
                   <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#0d9488" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" fill="var(--chart-2)" radius={[0, 4, 4, 0]}>{stageData.map(stage => <Cell key={stage.name} fill={stage.color} />)}</Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -204,12 +287,12 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={analytics.growthTrends} margin={{ left: -10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d) => d.slice(5)} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={(d) => d.slice(5)} />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip labelFormatter={(l) => `Date: ${l}`} />
-                  <Area type="monotone" dataKey="created" stackId="1" stroke="#0d9488" fill="#0d9488" fillOpacity={0.6} name="Created" />
-                  <Area type="monotone" dataKey="multiplied" stackId="1" stroke="#14b8a6" fill="#14b8a6" fillOpacity={0.6} name="Multiplied" />
-                  <Area type="monotone" dataKey="stage_advanced" stackId="1" stroke="#5eead4" fill="#5eead4" fillOpacity={0.4} name="Advanced" />
+                  <Area type="monotone" dataKey="created" stackId="1" stroke="var(--chart-2)" fill="var(--chart-2)" fillOpacity={0.6} name="Created" />
+                  <Area type="monotone" dataKey="multiplied" stackId="1" stroke="var(--chart-5)" fill="var(--chart-5)" fillOpacity={0.6} name="Multiplied" />
+                  <Area type="monotone" dataKey="stage_advanced" stackId="1" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.4} name="Advanced" />
                   <Legend />
                 </AreaChart>
               </ResponsiveContainer>
@@ -354,89 +437,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Ready to pull + Recent activity */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {stats.readyToMultiply.length > 0 && (
-          <Card className="border-primary/30 bg-primary/5">
-            <CardHeader>
-              <CardTitle className="text-base">Ready to Pull ({stats.readyToMultiply.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {stats.readyToMultiply.slice(0, 8).map((v) => (
-                  <Link
-                    key={v.id}
-                    href={`/vessels/${v.id}`}
-                    className="flex items-center justify-between p-2 rounded-md bg-background border hover:border-primary/50 transition-colors"
-                  >
-                    <div>
-                      <span className="font-mono text-sm font-medium">{v.barcode}</span>
-                      <span className="text-sm text-muted-foreground ml-2">{v.cultivarName}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(v.updatedAt), { addSuffix: true })}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
-        <Card className={stats.readyToMultiply.length > 0 ? "" : "md:col-span-2"}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Recent Activity</CardTitle>
-              <div className="flex gap-2 items-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const rows = stats.recentActivities.map((a) => ({
-                      type: a.type,
-                      vessel: a.vessel?.barcode ?? "",
-                      user: a.user?.name ?? "",
-                      notes: a.notes ?? "",
-                      date: a.createdAt,
-                    }));
-                    exportToCSV(rows, "activity-export");
-                  }}
-                >
-                  CSV
-                </Button>
-                <Link href="/activity" className="text-sm text-muted-foreground hover:underline">
-                  View all
-                </Link>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {stats.recentActivities.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No activity yet</p>
-            ) : (
-              <div className="space-y-3">
-                {stats.recentActivities.slice(0, 10).map((a) => (
-                  <div key={a.id} className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      {a.vessel && (
-                        <Link href={`/vessels/${a.vessel.id}`} className="font-mono text-sm hover:underline">
-                          {a.vessel.barcode}
-                        </Link>
-                      )}
-                      <p className="text-xs text-muted-foreground truncate">
-                        {a.type.replace(/_/g, " ")}{a.user ? ` by ${a.user.name}` : ""}{a.notes ? ` — ${a.notes}` : ""}
-                      </p>
-                    </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      </div></details>
     </div>
   );
 }
@@ -448,7 +450,7 @@ function KPICard({ title, value, alert }: { title: string; value: string | numbe
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className={`text-3xl font-bold ${alert ? "text-red-500" : ""}`}>
+        <p className={`text-3xl font-semibold tabular-nums ${alert ? "text-red-500" : ""}`}>
           {typeof value === "number" ? value.toLocaleString() : value}
         </p>
       </CardContent>

@@ -10,6 +10,9 @@ vi.mock("@/lib/prisma", () => ({
       update: vi.fn(),
       count: vi.fn(),
     },
+    organization: {
+      findUnique: vi.fn().mockResolvedValue({ plan: "free", planStatus: "active", vesselLimitOverride: null }),
+    },
     cultivar: {
       findMany: vi.fn(),
     },

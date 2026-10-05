@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,10 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { StageBadge } from "@/components/status-badge";
 import { BASE_MEDIA_TYPES, STAGE_LABELS, PGR_CATEGORIES } from "@/lib/constants";
-import type { MediaRecipe, MediaComponent } from "@/lib/types";
+import type { MediaRecipe } from "@/lib/types";
 import { toast } from "sonner";
 
 const PGR_CATEGORY_LABELS: Record<string, string> = {
@@ -29,9 +29,9 @@ const PGR_CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function MediaRecipesPage() {
-  const router = useRouter();
   const [recipes, setRecipes] = useState<(MediaRecipe & { _count?: { vessels: number; batches: number } })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState("all");
   const [baseMediaFilter, setBaseMediaFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -52,10 +52,18 @@ export default function MediaRecipesPage() {
     const params = new URLSearchParams();
     if (stageFilter !== "all") params.set("stage", stageFilter);
     if (baseMediaFilter !== "all") params.set("baseMedia", baseMediaFilter);
+    setLoadError(null);
+    try {
     const res = await fetch(`/api/media-recipes?${params}`);
+    if (!res.ok) throw new Error();
     const data = await res.json();
     setRecipes(data);
-    setLoading(false);
+
+    } catch {
+      setLoadError("Media recipes could not be loaded. Retry to see this view.");
+    } finally {
+      setLoading(false);
+    }
   }, [stageFilter, baseMediaFilter]);
 
   useEffect(() => {
@@ -129,13 +137,18 @@ export default function MediaRecipesPage() {
         const err = await res.json();
         toast.error(err.error || "Failed to create recipe");
       }
+    } catch {
+      toast.error("The save could not be confirmed. Your entries have been kept.");
     } finally {
       setCreating(false);
     }
   };
 
+  const hasFilters = stageFilter !== "all" || baseMediaFilter !== "all";
+  const resetFilters = () => { setStageFilter("all"); setBaseMediaFilter("all"); };
+
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         title="Media Recipes"
         description="Manage culture media formulations"
@@ -149,15 +162,15 @@ export default function MediaRecipesPage() {
                 <DialogTitle>Create Media Recipe</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Recipe Name</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. MS + BAP 1.0" className="mt-1" />
+                    <Label htmlFor="media-field-1">Recipe Name</Label>
+                    <Input id="media-field-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. MS + BAP 1.0" className="mt-1" />
                   </div>
                   <div>
-                    <Label>Base Media</Label>
+                    <Label htmlFor="media-field-2">Base Media</Label>
                     <Select value={baseMedia} onValueChange={setBaseMedia}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectTrigger id="media-field-2" className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
                       <SelectContent>
                         {BASE_MEDIA_TYPES.map((m) => (
                           <SelectItem key={m} value={m}>{m}</SelectItem>
@@ -166,24 +179,24 @@ export default function MediaRecipesPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Target pH</Label>
-                    <Input type="number" step="0.1" value={targetPH} onChange={(e) => setTargetPH(e.target.value)} placeholder="5.8" className="mt-1" />
+                    <Label htmlFor="media-field-3">Target pH</Label>
+                    <Input id="media-field-3" type="number" step="0.1" value={targetPH} onChange={(e) => setTargetPH(e.target.value)} placeholder="5.8" className="mt-1" />
                   </div>
                   <div>
-                    <Label>Agar (g/L)</Label>
-                    <Input type="number" step="0.1" value={agarConc} onChange={(e) => setAgarConc(e.target.value)} placeholder="7.0" className="mt-1" />
+                    <Label htmlFor="media-field-4">Agar (g/L)</Label>
+                    <Input id="media-field-4" type="number" step="0.1" value={agarConc} onChange={(e) => setAgarConc(e.target.value)} placeholder="7.0" className="mt-1" />
                   </div>
                   <div>
-                    <Label>Sucrose (g/L)</Label>
-                    <Input type="number" step="0.1" value={sucroseConc} onChange={(e) => setSucroseConc(e.target.value)} placeholder="30" className="mt-1" />
+                    <Label htmlFor="media-field-5">Sucrose (g/L)</Label>
+                    <Input id="media-field-5" type="number" step="0.1" value={sucroseConc} onChange={(e) => setSucroseConc(e.target.value)} placeholder="30" className="mt-1" />
                   </div>
                 </div>
                 <div>
-                  <Label>Target Stage</Label>
+                  <Label htmlFor="media-field-6">Target Stage</Label>
                   <Select value={stage} onValueChange={setStage}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Any stage" /></SelectTrigger>
+                    <SelectTrigger id="media-field-6" className="mt-1"><SelectValue placeholder="Any stage" /></SelectTrigger>
                     <SelectContent>
                       {Object.entries(STAGE_LABELS).map(([value, label]) => (
                         <SelectItem key={value} value={value}>{label}</SelectItem>
@@ -199,26 +212,26 @@ export default function MediaRecipesPage() {
                     <Button variant="outline" size="sm" onClick={addComponent}>Add Component</Button>
                   </div>
                   {components.map((comp, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 mb-2">
-                      <Input className="col-span-3" placeholder="Name" value={comp.name} onChange={(e) => updateComponent(i, "name", e.target.value)} />
+                    <div key={i} className="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3 rounded-lg border p-3 [&>*]:min-w-0 [&>*]:break-words">
+                      <Input className="sm:col-span-3" placeholder="Name" value={comp.name} onChange={(e) => updateComponent(i, "name", e.target.value)} />
                       <Select value={comp.category} onValueChange={(v) => updateComponent(i, "category", v)}>
-                        <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="sm:col-span-3"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {PGR_CATEGORIES.map((c) => (
                             <SelectItem key={c} value={c}>{PGR_CATEGORY_LABELS[c] || c}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <Input className="col-span-2" type="number" step="0.01" placeholder="Conc." value={comp.concentration} onChange={(e) => updateComponent(i, "concentration", e.target.value)} />
-                      <Input className="col-span-2" placeholder="Unit" value={comp.unit} onChange={(e) => updateComponent(i, "unit", e.target.value)} />
-                      <Button variant="ghost" size="sm" className="col-span-2" onClick={() => removeComponent(i)}>Remove</Button>
+                      <Input className="sm:col-span-2" type="number" step="0.01" placeholder="Conc." value={comp.concentration} onChange={(e) => updateComponent(i, "concentration", e.target.value)} />
+                      <Input className="sm:col-span-2" placeholder="Unit" value={comp.unit} onChange={(e) => updateComponent(i, "unit", e.target.value)} />
+                      <Button variant="ghost" size="sm" className="sm:col-span-2" onClick={() => removeComponent(i)}>Remove</Button>
                     </div>
                   ))}
                 </div>
 
                 <div>
-                  <Label>Notes</Label>
-                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-1" />
+                  <Label htmlFor="media-field-7">Notes</Label>
+                  <Textarea id="media-field-7" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-1" />
                 </div>
 
                 <Button onClick={handleCreate} disabled={creating} className="w-full">
@@ -230,12 +243,14 @@ export default function MediaRecipesPage() {
         }
       />
 
+      <Button variant="outline" asChild><Link href="/media/batches">View prepared batches</Link></Button>
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
             <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger><SelectValue placeholder="Stage" /></SelectTrigger>
+              <SelectTrigger aria-label="Filter by stage" className="min-w-0 w-full"><SelectValue placeholder="Stage" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Stages</SelectItem>
                 {Object.entries(STAGE_LABELS).map(([value, label]) => (
@@ -244,7 +259,7 @@ export default function MediaRecipesPage() {
               </SelectContent>
             </Select>
             <Select value={baseMediaFilter} onValueChange={setBaseMediaFilter}>
-              <SelectTrigger><SelectValue placeholder="Base Media" /></SelectTrigger>
+              <SelectTrigger aria-label="Filter by base media" className="min-w-0 w-full"><SelectValue placeholder="Base Media" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Base Media</SelectItem>
                 {BASE_MEDIA_TYPES.map((m) => (
@@ -253,14 +268,15 @@ export default function MediaRecipesPage() {
               </SelectContent>
             </Select>
           </div>
+          {hasFilters && <Button variant="ghost" size="sm" className="mt-3" onClick={resetFilters}>Reset filters</Button>}
         </CardContent>
       </Card>
 
       {/* Recipes */}
-      {loading ? (
+      {loadError ? <PageError message={loadError} retry={fetchRecipes} /> : loading ? (
         <p className="text-center text-muted-foreground py-8">Loading...</p>
       ) : recipes.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">No media recipes found. Create one to get started.</p>
+        <p className="text-center text-muted-foreground py-8">{hasFilters ? "No recipes match these filters. Reset the filters to see all recipes." : "No media recipes yet. Create a formulation to prepare your first batch."}</p>
       ) : (
         <>
           <div className="hidden md:block rounded-md border">
@@ -278,8 +294,8 @@ export default function MediaRecipesPage() {
               </TableHeader>
               <TableBody>
                 {recipes.map((r) => (
-                  <TableRow key={r.id} className="cursor-pointer" onClick={() => router.push(`/media/${r.id}`)}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium"><Link href={`/media/${r.id}`} className="text-primary hover:underline underline-offset-4">{r.name}</Link></TableCell>
                     <TableCell><Badge variant="outline">{r.baseMedia}</Badge></TableCell>
                     <TableCell>{r.targetPH ?? "—"}</TableCell>
                     <TableCell>{r.stage ? <StageBadge stage={r.stage} /> : "Any"}</TableCell>
@@ -298,7 +314,7 @@ export default function MediaRecipesPage() {
               <Link key={r.id} href={`/media/${r.id}`}>
                 <Card className="hover:bg-accent/50 transition-colors">
                   <CardContent className="pt-4 pb-3">
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-wrap justify-between items-start gap-3">
                       <div>
                         <p className="font-medium">{r.name}</p>
                         <p className="text-sm text-muted-foreground">{r.baseMedia} {r.targetPH ? `• pH ${r.targetPH}` : ""}</p>

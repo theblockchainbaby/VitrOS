@@ -7,8 +7,8 @@ import { SessionProvider } from "@/components/session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { ThemeProvider } from "next-themes";
-import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { HeartbeatProvider } from "@/components/heartbeat-provider";
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/lib/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,41 +21,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://vitroslabs.com"),
-  title: "VitrOS | Lab Management Software for Tissue Culture Labs",
-  description:
-    "VitrOS is the modern lab management software built for tissue culture. Track vessels, schedule subcultures, and manage your entire operation in one platform.",
-  keywords: [
-    "lab management software",
-    "tissue culture lab",
-    "tissue culture operating system",
-    "lab inventory software",
-    "lab workflow software",
-    "tissue culture tracking",
-    "vessel tracking",
-    "plant propagation software",
-    "laboratory automation software",
-    "lab tracking software",
-  ],
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  robots: { index: false, follow: false },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "VitrOS",
-  },
-  openGraph: {
-    title: "VitrOS | Lab Management Software for Tissue Culture Labs",
-    description:
-      "VitrOS is the modern lab management software built for tissue culture. Track vessels, schedule subcultures, and manage your entire operation in one platform.",
-    type: "website",
-    siteName: "VitrOS",
-    url: "https://vitroslabs.com",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "VitrOS | Lab Management Software for Tissue Culture Labs",
-    description:
-      "VitrOS is the modern lab management software built for tissue culture. Track vessels, schedule subcultures, and manage your entire operation in one platform.",
   },
   other: {
     "mobile-web-app-capable": "yes",
@@ -70,34 +44,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#3d8b3d" />
+        <meta name="theme-color" content="#285d46" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "SoftwareApplication",
-              "name": "VitrOS",
-              "applicationCategory": "BusinessApplication",
-              "operatingSystem": "Web",
-              "description": "Lab management software built for tissue culture. Track vessels, schedule subcultures, and manage your entire operation in one platform.",
-              "url": "https://vitroslabs.com",
-              "offers": {
-                "@type": "AggregateOffer",
-                "lowPrice": "499",
-                "highPrice": "2499",
-                "priceCurrency": "USD",
-                "offerCount": "3",
-              },
-              "publisher": {
-                "@type": "Organization",
-                "name": "VitrOS Labs",
-                "url": "https://vitroslabs.com",
-              },
-            }),
-          }}
-        />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
@@ -109,7 +57,6 @@ export default function RootLayout({
             </TooltipProvider>
             <Toaster />
             <ServiceWorkerRegister />
-            <KeyboardShortcuts />
             <HeartbeatProvider />
           </SessionProvider>
         </ThemeProvider>

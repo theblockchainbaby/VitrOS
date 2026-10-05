@@ -15,12 +15,13 @@ export default function ReportsPage() {
   const [generatingCSV, setGeneratingCSV] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
-  const generateCSV = async () => {
+  const generateCSV = async (type: ReportType) => {
     setGeneratingCSV(true);
     try {
-      switch (reportType) {
+      switch (type) {
         case "vessels": {
           const res = await fetch("/api/vessels?limit=10000");
+          if (!res.ok) throw new Error("Report data is unavailable. Please try again.");
           const data = await res.json();
           const rows = (data.vessels || []).map((v: Record<string, unknown>) => flattenVesselForExport(v));
           exportToCSV(rows, `vessels-report-${new Date().toISOString().split("T")[0]}`);
@@ -29,6 +30,7 @@ export default function ReportsPage() {
         }
         case "activity": {
           const res = await fetch("/api/activities?limit=10000");
+          if (!res.ok) throw new Error("Report data is unavailable. Please try again.");
           const data = await res.json();
           const activities = Array.isArray(data) ? data : data.activities || [];
           const rows = activities.map((a: Record<string, unknown>) => flattenActivityForExport(a));
@@ -41,6 +43,7 @@ export default function ReportsPage() {
             fetch("/api/stats"),
             fetch("/api/stats/analytics?period=month"),
           ]);
+          if (!statsRes.ok || !analyticsRes.ok) throw new Error("Report data is unavailable");
           const stats = await statsRes.json();
           const analytics = await analyticsRes.json();
 
@@ -65,6 +68,7 @@ export default function ReportsPage() {
         }
         case "contamination": {
           const analyticsRes = await fetch("/api/stats/analytics?period=quarter");
+          if (!analyticsRes.ok) throw new Error("Report data is unavailable");
           const analytics = await analyticsRes.json();
 
           const rows = [
@@ -92,10 +96,10 @@ export default function ReportsPage() {
     }
   };
 
-  const generatePDF = async () => {
+  const generatePDF = async (type: ReportType) => {
     setGeneratingPDF(true);
     try {
-      const res = await fetch(`/api/reports/pdf?type=${reportType}`);
+      const res = await fetch(`/api/reports/pdf?type=${type}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Failed to generate PDF");
@@ -105,7 +109,7 @@ export default function ReportsPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `vitros-${reportType}-report-${new Date().toISOString().split("T")[0]}.pdf`;
+      link.download = `vitros-${type}-report-${new Date().toISOString().split("T")[0]}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
       toast.success("PDF report downloaded");
@@ -117,14 +121,14 @@ export default function ReportsPage() {
   };
 
   const reportDescriptions: Record<ReportType, string> = {
-    vessels: "Complete vessel inventory with cultivar, stage, status, health, and location data.",
-    activity: "Full audit trail of all vessel operations with timestamps and user attribution.",
+    vessels: "Vessel inventory with cultivar, stage, status, health, and location data.",
+    activity: "Recent vessel operations with timestamps and user attribution.",
     production: "Summary of active vessels, pipeline stages, cultivar breakdown, and key metrics.",
-    contamination: "Contamination breakdown by type and cultivar over the past quarter.",
+    contamination: "Contamination breakdown by type and cultivar; reporting scope depends on format.",
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-6 max-w-4xl">
       <PageHeader
         title="Reports"
         description="Generate and download reports as CSV or PDF"
@@ -137,7 +141,7 @@ export default function ReportsPage() {
         <CardContent className="space-y-4">
           <div>
             <Select value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Report type"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="vessels">Vessel Report</SelectItem>
                 <SelectItem value="activity">Activity Log</SelectItem>
@@ -148,12 +152,15 @@ export default function ReportsPage() {
           </div>
 
           <p className="text-sm text-muted-foreground">{reportDescriptions[reportType]}</p>
+          <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground space-y-1">
+            {(reportType === "vessels" || reportType === "activity") ? <p>CSV includes up to 10,000 records. PDF includes the latest 500 records. Both use your workspace scope.</p> : reportType === "production" ? <><p>CSV: current planted pipeline, current contamination ratio, and multiplication events from the past month.</p><p>PDF: current inventory, including media preparation, and lifetime contamination/multiplication ratios. These scopes differ.</p></> : <><p>CSV: current active contamination rate and lifetime breakdown by type and cultivar.</p><p>PDF: contamination recorded in the last three months, relative to vessels created in that period. These scopes differ.</p></>}
+          </div>
 
-          <div className="flex gap-2">
-            <Button onClick={generateCSV} disabled={generatingCSV} variant="outline" className="flex-1">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button onClick={() => generateCSV(reportType)} disabled={generatingCSV || generatingPDF} variant="outline" className="flex-1">
               {generatingCSV ? "Generating..." : "Download CSV"}
             </Button>
-            <Button onClick={generatePDF} disabled={generatingPDF} className="flex-1">
+            <Button onClick={() => generatePDF(reportType)} disabled={generatingCSV || generatingPDF} className="flex-1">
               {generatingPDF ? "Generating..." : "Download PDF"}
             </Button>
           </div>
@@ -167,28 +174,32 @@ export default function ReportsPage() {
         <CardContent>
           <div className="space-y-3">
             <ReportOption
+              disabled={generatingCSV || generatingPDF}
               title="Vessel Report"
-              description="Complete vessel inventory with all metadata"
-              onCSV={() => { setReportType("vessels"); generateCSV(); }}
-              onPDF={() => { setReportType("vessels"); generatePDF(); }}
+              description="Inventory with metadata; export limits apply"
+              onCSV={() => { setReportType("vessels"); generateCSV("vessels"); }}
+              onPDF={() => { setReportType("vessels"); generatePDF("vessels"); }}
             />
             <ReportOption
+              disabled={generatingCSV || generatingPDF}
               title="Activity Log"
-              description="Full audit trail of all vessel operations"
-              onCSV={() => { setReportType("activity"); generateCSV(); }}
-              onPDF={() => { setReportType("activity"); generatePDF(); }}
+              description="Recent vessel operations; export limits apply"
+              onCSV={() => { setReportType("activity"); generateCSV("activity"); }}
+              onPDF={() => { setReportType("activity"); generatePDF("activity"); }}
             />
             <ReportOption
+              disabled={generatingCSV || generatingPDF}
               title="Production Summary"
               description="KPIs, pipeline stages, and cultivar metrics"
-              onCSV={() => { setReportType("production"); generateCSV(); }}
-              onPDF={() => { setReportType("production"); generatePDF(); }}
+              onCSV={() => { setReportType("production"); generateCSV("production"); }}
+              onPDF={() => { setReportType("production"); generatePDF("production"); }}
             />
             <ReportOption
+              disabled={generatingCSV || generatingPDF}
               title="Contamination Report"
               description="Contamination rates by type and cultivar"
-              onCSV={() => { setReportType("contamination"); generateCSV(); }}
-              onPDF={() => { setReportType("contamination"); generatePDF(); }}
+              onCSV={() => { setReportType("contamination"); generateCSV("contamination"); }}
+              onPDF={() => { setReportType("contamination"); generatePDF("contamination"); }}
             />
           </div>
         </CardContent>
@@ -200,33 +211,35 @@ export default function ReportsPage() {
 function ReportOption({
   title,
   description,
+  disabled,
   onCSV,
   onPDF,
 }: {
   title: string;
   description: string;
+  disabled: boolean;
   onCSV: () => void;
   onPDF: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between p-3 rounded-md border">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border">
       <div>
         <p className="font-medium text-sm">{title}</p>
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
-      <div className="flex gap-1.5 shrink-0 ml-3">
-        <button
+      <div className="flex gap-1.5 shrink-0">
+        <Button variant="outline" size="sm" disabled={disabled} aria-label={`Download ${title} as CSV`}
           onClick={onCSV}
           className="text-xs px-2 py-1 rounded border hover:bg-accent transition-colors"
         >
           CSV
-        </button>
-        <button
+        </Button>
+        <Button size="sm" disabled={disabled} aria-label={`Download ${title} as PDF`}
           onClick={onPDF}
           className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           PDF
-        </button>
+        </Button>
       </div>
     </div>
   );

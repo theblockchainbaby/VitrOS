@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { CultivarHealthBadge, StageBadge, HealthBadge } from "@/components/status-badge";
-import { STAGE_LABELS, HEALTH_STATUS_LABELS, VESSEL_STATUS_LABELS } from "@/lib/constants";
+import { STAGE_LABELS, HEALTH_STATUS_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 import { ArrowLeft, Pencil, RotateCcw, Plus, FlaskConical, ChevronRight } from "lucide-react";
 
@@ -71,6 +72,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const [cultivar, setCultivar] = useState<CultivarDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -79,15 +81,18 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
   const [stageConfig, setStageConfig] = useState<StageConfigEntry[]>([]);
   const [savingStages, setSavingStages] = useState(false);
   const [cloneLines, setCloneLines] = useState<CloneLine[]>([]);
+  const [linesError, setLinesError] = useState<string | null>(null);
   const [linesLoading, setLinesLoading] = useState(true);
   const [newLineOpen, setNewLineOpen] = useState(false);
   const [newLineForm, setNewLineForm] = useState({ name: "", code: "", lineNumber: "", sourceType: "mother_plant", notes: "" });
   const [savingLine, setSavingLine] = useState(false);
 
   const fetchCultivar = () => {
+    setLoadError(null);
+    setLoading(true);
     fetch(`/api/cultivars/${id}`)
       .then((r) => {
-        if (!r.ok) throw new Error();
+        if (!r.ok) throw new Error(r.status === 404 ? "Cultivar not found." : "Cultivar could not be loaded. Try again.");
         return r.json();
       })
       .then((data) => {
@@ -95,16 +100,17 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
         setNotes(data.notes || "");
         setStageConfig(data.stageConfig?.stages || getDefaultStages());
       })
-      .catch(() => setCultivar(null))
+      .catch((error) => setLoadError(error instanceof Error ? error.message : "Cultivar could not be loaded. Try again."))
       .finally(() => setLoading(false));
   };
 
   const fetchCloneLines = () => {
     setLinesLoading(true);
+    setLinesError(null);
     fetch(`/api/clone-lines?cultivarId=${id}&status=all`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data) => setCloneLines(Array.isArray(data) ? data : []))
-      .catch(() => setCloneLines([]))
+      .catch(() => setLinesError("Clone lines could not be loaded."))
       .finally(() => setLinesLoading(false));
   };
 
@@ -127,6 +133,8 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
       } else {
         toast.error("Failed to save notes");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setSavingNotes(false);
     }
@@ -171,6 +179,8 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
       } else {
         toast.error("Failed to update cultivar");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setSaving(false);
     }
@@ -204,6 +214,8 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
         const err = await res.json();
         toast.error(err.error || "Failed to create line");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setSavingLine(false);
     }
@@ -237,6 +249,8 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
       } else {
         toast.error("Failed to save stage config");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setSavingStages(false);
     }
@@ -244,6 +258,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
 
   const totalPipelineWeeks = stageConfig.reduce((sum, s) => sum + s.durationWeeks, 0);
 
+  if (loadError) return <PageError message={loadError} retry={fetchCultivar} />;
   if (loading) return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
   if (!cultivar) return <div className="text-center py-12 text-muted-foreground">Cultivar not found</div>;
 
@@ -264,19 +279,19 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
   }));
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-2">
+    <div className="min-w-0 space-y-6 max-w-5xl mx-auto">
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/cultivars">
+          <Link href="/cultivars" aria-label="Back to cultivars">
             <ArrowLeft className="size-4" />
           </Link>
         </Button>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <PageHeader
             title={cultivar.name}
             description={cultivar.species + (cultivar.strain ? ` — ${cultivar.strain}` : "")}
             actions={
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <CultivarHealthBadge status={m.cultivarHealth} />
                 <Dialog open={editOpen} onOpenChange={setEditOpen}>
                   <DialogTrigger asChild>
@@ -289,21 +304,21 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                       <DialogTitle>Edit Cultivar</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-2">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                         <div className="space-y-2">
-                          <Label>Name</Label>
-                          <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} autoFocus />
+                          <Label htmlFor="cultivars-id-field-1">Name</Label>
+                          <Input id="cultivars-id-field-1" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} autoFocus />
                         </div>
                         <div className="space-y-2">
-                          <Label>Code</Label>
-                          <Input value={editForm.code} onChange={(e) => setEditForm({ ...editForm, code: e.target.value.toUpperCase() })} className="font-mono" />
+                          <Label htmlFor="cultivars-id-field-2">Code</Label>
+                          <Input id="cultivars-id-field-2" value={editForm.code} onChange={(e) => setEditForm({ ...editForm, code: e.target.value.toUpperCase() })} className="font-mono" />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                         <div className="space-y-2">
-                          <Label>Type</Label>
+                          <Label htmlFor="cultivars-id-field-3">Type</Label>
                           <Select value={editForm.cultivarType} onValueChange={(v) => setEditForm({ ...editForm, cultivarType: v })}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger id="cultivars-id-field-3"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="in_house">In-House</SelectItem>
                               <SelectItem value="client">Client</SelectItem>
@@ -311,17 +326,17 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Species</Label>
-                          <Input value={editForm.species} onChange={(e) => setEditForm({ ...editForm, species: e.target.value })} placeholder="e.g., Spathiphyllum wallisii" />
+                          <Label htmlFor="cultivars-id-field-4">Species</Label>
+                          <Input id="cultivars-id-field-4" value={editForm.species} onChange={(e) => setEditForm({ ...editForm, species: e.target.value })} placeholder="e.g., Spathiphyllum wallisii" />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Variety / Strain (optional)</Label>
-                        <Input value={editForm.strain} onChange={(e) => setEditForm({ ...editForm, strain: e.target.value })} placeholder="e.g., Domino" />
+                        <Label htmlFor="cultivars-id-field-5">Variety / Strain (optional)</Label>
+                        <Input id="cultivars-id-field-5" value={editForm.strain} onChange={(e) => setEditForm({ ...editForm, strain: e.target.value })} placeholder="e.g., Domino" />
                       </div>
                       <div className="space-y-2">
-                        <Label>Description (optional)</Label>
-                        <Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+                        <Label htmlFor="cultivars-id-field-6">Description (optional)</Label>
+                        <Input id="cultivars-id-field-6" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
                       </div>
                       <Button onClick={handleSaveEdit} disabled={saving} className="w-full">
                         {saving ? "Saving..." : "Save Changes"}
@@ -336,7 +351,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 [&>*]:min-w-0 [&>*]:break-words">
         <div className="text-center p-4 bg-muted/50 rounded-lg">
           <p className="text-2xl font-mono font-bold">{m.activeVessels}</p>
           <p className="text-xs text-muted-foreground">Active Vessels</p>
@@ -363,7 +378,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
           <CardTitle className="text-base">Vessels by Stage</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*]:min-w-0 [&>*]:break-words">
             {stageEntries.map((s) => (
               <div key={s.key} className="text-center space-y-1">
                 <StageBadge stage={s.key} />
@@ -380,7 +395,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
           <CardTitle className="text-base">Vessels by Health</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*]:min-w-0 [&>*]:break-words">
             {healthEntries.map((h) => (
               <div key={h.key} className="text-center space-y-1">
                 <HealthBadge status={h.key} />
@@ -394,8 +409,8 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
       {/* Meristematic Lines */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
-            <span className="flex items-center gap-2">
+          <CardTitle className="text-base flex flex-wrap items-center justify-between gap-3">
+            <span className="flex flex-wrap items-center gap-2">
               <FlaskConical className="size-4" />
               Meristematic Lines
               <span className="text-sm font-normal text-muted-foreground">({cloneLines.length})</span>
@@ -411,10 +426,10 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                   <DialogTitle>New Clone Line</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-2">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                     <div className="space-y-2">
-                      <Label>Line Name</Label>
-                      <Input
+                      <Label htmlFor="cultivars-id-field-7">Line Name</Label>
+                      <Input id="cultivars-id-field-7"
                         value={newLineForm.name}
                         onChange={(e) => setNewLineForm({ ...newLineForm, name: e.target.value })}
                         placeholder="e.g., Gelato 33-A"
@@ -422,8 +437,8 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Line # (optional)</Label>
-                      <Input
+                      <Label htmlFor="cultivars-id-field-8">Line # (optional)</Label>
+                      <Input id="cultivars-id-field-8"
                         type="number"
                         min={1}
                         value={newLineForm.lineNumber}
@@ -433,10 +448,10 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                     <div className="space-y-2">
-                      <Label>Code (optional)</Label>
-                      <Input
+                      <Label htmlFor="cultivars-id-field-9">Code (optional)</Label>
+                      <Input id="cultivars-id-field-9"
                         value={newLineForm.code}
                         onChange={(e) => setNewLineForm({ ...newLineForm, code: e.target.value.toUpperCase() })}
                         placeholder="e.g., G33-A"
@@ -444,9 +459,9 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Source Type</Label>
+                      <Label htmlFor="cultivars-id-field-10">Source Type</Label>
                       <Select value={newLineForm.sourceType} onValueChange={(v) => setNewLineForm({ ...newLineForm, sourceType: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger id="cultivars-id-field-10"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="mother_plant">Mother Plant</SelectItem>
                           <SelectItem value="meristem">Meristem</SelectItem>
@@ -456,8 +471,8 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Notes (optional)</Label>
-                    <Textarea
+                    <Label htmlFor="cultivars-id-field-11">Notes (optional)</Label>
+                    <Textarea id="cultivars-id-field-11"
                       value={newLineForm.notes}
                       onChange={(e) => setNewLineForm({ ...newLineForm, notes: e.target.value })}
                       rows={2}
@@ -473,7 +488,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {linesLoading ? (
+          {linesError ? <PageError message={linesError} retry={fetchCloneLines} /> : linesLoading ? (
             <p className="text-sm text-muted-foreground text-center py-4">Loading lines...</p>
           ) : cloneLines.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
@@ -485,9 +500,9 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                 <Link
                   key={line.id}
                   href={`/clone-lines/${line.id}`}
-                  className="flex items-center justify-between py-3 px-1 hover:bg-muted/40 rounded transition-colors group"
+                  className="flex flex-wrap items-center justify-between gap-3 py-3 px-1 hover:bg-muted/40 rounded transition-colors group"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     {line.lineNumber && (
                       <span className="text-xs font-mono text-muted-foreground w-6 text-center">#{line.lineNumber}</span>
                     )}
@@ -496,17 +511,17 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                       {line.code && <p className="text-xs text-muted-foreground font-mono">{line.code}</p>}
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      line.status === "active" ? "bg-green-100 text-green-700" :
-                      line.status === "quarantined" ? "bg-red-100 text-red-700" :
+                      line.status === "active" ? "bg-primary/10 text-primary" :
+                      line.status === "quarantined" ? "bg-destructive/10 text-destructive" :
                       "bg-muted text-muted-foreground"
                     }`}>
                       {line.status}
                     </span>
                     {line.lastTestResult && (
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        line.lastTestResult === "clean" ? "bg-green-100 text-green-700" :
-                        line.lastTestResult === "dirty" ? "bg-red-100 text-red-700" :
-                        "bg-yellow-100 text-yellow-700"
+                        line.lastTestResult === "clean" ? "bg-primary/10 text-primary" :
+                        line.lastTestResult === "dirty" ? "bg-destructive/10 text-destructive" :
+                        "bg-amber-500/10 text-amber-800 dark:text-amber-300"
                       }`}>
                         {line.lastTestResult === "clean" ? "Clean" : line.lastTestResult === "dirty" ? "Dirty" : "Inconclusive"}
                       </span>
@@ -530,7 +545,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
             <CardTitle className="text-base">Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-2 gap-2 text-sm [&>*]:min-w-0 [&>*]:break-words">
               {cultivar.description && (
                 <>
                   <span className="text-muted-foreground">Description</span>
@@ -569,7 +584,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
       {/* Stage Pipeline Configuration */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
+          <CardTitle className="text-base flex flex-wrap items-center justify-between gap-3">
             <span>Stage Pipeline Configuration</span>
             <span className="text-sm font-normal text-muted-foreground">
               Total: {totalPipelineWeeks} weeks ({Math.round(totalPipelineWeeks / 4.3)} months)
@@ -598,6 +613,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                         type="number"
                         min={1}
                         max={52}
+                        aria-label={`${stage.name} — Duration in weeks`}
                         value={stage.durationWeeks}
                         onChange={(e) => updateStageField(i, "durationWeeks", parseInt(e.target.value) || 1)}
                         className="w-20 mx-auto text-center h-8 font-mono"
@@ -608,6 +624,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                         type="number"
                         min={1}
                         step={0.1}
+                        aria-label={`${stage.name} — Multiplication rate`}
                         value={stage.multiplicationRate}
                         onChange={(e) => updateStageField(i, "multiplicationRate", parseFloat(e.target.value) || 1)}
                         className="w-20 mx-auto text-center h-8 font-mono"
@@ -619,6 +636,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
                         min={0}
                         max={100}
                         step={1}
+                        aria-label={`${stage.name} — Survival percent`}
                         value={Math.round(stage.survivalRate * 100)}
                         onChange={(e) => updateStageField(i, "survivalRate", (parseInt(e.target.value) || 0) / 100)}
                         className="w-20 mx-auto text-center h-8 font-mono"
@@ -629,7 +647,7 @@ export default function CultivarDetailPage({ params }: { params: Promise<{ id: s
               </tbody>
             </table>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button onClick={handleSaveStageConfig} disabled={savingStages} size="sm">
               {savingStages ? "Saving..." : "Save Pipeline"}
             </Button>

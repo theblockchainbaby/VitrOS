@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import Link from "next/link";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { LineageTreeView } from "@/components/lineage-tree";
@@ -14,19 +15,20 @@ export default function LineagePage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadLineage = useCallback(() => {
     fetch(`/api/vessels/${id}/lineage`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load lineage");
         return r.json();
       })
-      .then(setTree)
+      .then((data) => { setTree(data); setError(null); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
+  useEffect(() => { loadLineage(); }, [loadLineage]);
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         title="Vessel Lineage"
         description="Full genealogy tree from mother plant to descendants"
@@ -46,11 +48,7 @@ export default function LineagePage({ params }: { params: Promise<{ id: string }
         </div>
       )}
 
-      {error && (
-        <div className="text-center py-12 text-red-500">
-          {error}
-        </div>
-      )}
+      {error && <PageError message={error} retry={() => { setLoading(true); setError(null); loadLineage(); }} />}
 
       {!loading && !error && tree && tree.totalNodes <= 1 && (
         <div className="text-center py-16 space-y-3">

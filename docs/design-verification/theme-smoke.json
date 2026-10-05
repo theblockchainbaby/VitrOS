@@ -1,0 +1,269 @@
+{
+  "checks": [
+    {
+      "route": "/",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "route": "/vessels",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/vessels",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/vessels",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "route": "/scan",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/scan",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/scan",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "route": "/labels",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/labels",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/labels",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "route": "/analytics",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/analytics",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/analytics",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "route": "/demand-planning",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/demand-planning",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/demand-planning",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "route": "/integrations",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/integrations",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/integrations",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "route": "/team-performance",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/team-performance",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/team-performance",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "route": "/login",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/login",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/login",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "route": "/features",
+      "width": 375,
+      "document": 375,
+      "dark": true
+    },
+    {
+      "route": "/features",
+      "width": 768,
+      "document": 768,
+      "dark": true
+    },
+    {
+      "route": "/features",
+      "width": 1440,
+      "document": 1440,
+      "dark": true
+    },
+    {
+      "test": "light core text contrast",
+      "pairs": [
+        {
+          "foreground": "--foreground",
+          "background": "--background",
+          "ratio": 12.310106680606067,
+          "values": [
+            "#24332d",
+            "#f6f7f4"
+          ]
+        },
+        {
+          "foreground": "--muted-foreground",
+          "background": "--background",
+          "ratio": 4.745526876754744,
+          "values": [
+            "#657168",
+            "#f6f7f4"
+          ]
+        },
+        {
+          "foreground": "--primary-foreground",
+          "background": "--primary",
+          "ratio": 7.651937846946736,
+          "values": [
+            "#fff",
+            "#285d46"
+          ]
+        },
+        {
+          "foreground": "--sidebar-muted-foreground",
+          "background": "--sidebar",
+          "ratio": 4.583106463926075,
+          "values": [
+            "#627064",
+            "#eef1ec"
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "test": "dark core text contrast",
+      "pairs": [
+        {
+          "foreground": "--foreground",
+          "background": "--background",
+          "ratio": 14.070631401524468,
+          "values": [
+            "#e5eae4",
+            "#161d19"
+          ]
+        },
+        {
+          "foreground": "--muted-foreground",
+          "background": "--background",
+          "ratio": 7.520506303081453,
+          "values": [
+            "#a2afa4",
+            "#161d19"
+          ]
+        },
+        {
+          "foreground": "--primary-foreground",
+          "background": "--primary",
+          "ratio": 7.790744463717322,
+          "values": [
+            "#172e1e",
+            "#a1c7aa"
+          ]
+        },
+        {
+          "foreground": "--sidebar-muted-foreground",
+          "background": "--sidebar",
+          "ratio": 7.185447518485474,
+          "values": [
+            "#a2b09f",
+            "#19221c"
+          ]
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "errors": []
+}

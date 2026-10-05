@@ -1,15 +1,20 @@
-"use client";
+import { HomePage } from "@/components/home-page";
+import { homeStructuredData, publicPageMetadata, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo";
 
-import { useSession } from "next-auth/react";
-import Dashboard from "@/components/dashboard";
-import { LandingPage } from "@/components/landing-page";
+export const metadata = publicPageMetadata({
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  path: "/",
+});
 
 export default function Home() {
-  const { status } = useSession();
-
-  if (status === "authenticated") return <Dashboard />;
-
-  // Always render landing page during loading + unauthenticated
-  // Root metadata is set in layout.tsx since this is a client component
-  return <LandingPage />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeStructuredData).replace(/</g, "\\u003c") }}
+      />
+      <HomePage />
+    </>
+  );
 }

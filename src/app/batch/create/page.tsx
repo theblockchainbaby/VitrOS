@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/page-header";
 import type { Cultivar } from "@/lib/types";
 import { toast } from "sonner";
+import { BatchResults, type BatchResult, type BatchFailure } from "@/components/batch-results";
 
 interface MediaRecipe {
   id: string;
@@ -22,6 +23,7 @@ export default function BatchCreatePage() {
   const [barcodeInput, setBarcodeInput] = useState("");
   const [scanning, setScanning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<BatchResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Shared fields for all vessels
@@ -43,7 +45,7 @@ export default function BatchCreatePage() {
 
   const addBarcode = useCallback(async (barcode: string) => {
     const trimmed = barcode.trim();
-    if (!trimmed) return;
+    if (!trimmed || scanning || submitting) return;
 
     if (barcodes.includes(trimmed)) {
       toast.info("Already scanned");
@@ -56,6 +58,7 @@ export default function BatchCreatePage() {
     setScanning(true);
     try {
       const res = await fetch(`/api/vessels/barcode?code=${encodeURIComponent(trimmed)}`);
+      if (!res.ok) throw new Error("Lookup failed");
       const data = await res.json();
       if (data.found && !data.isDisposed) {
         toast.error(`Barcode ${trimmed} belongs to an active vessel`);
@@ -63,12 +66,14 @@ export default function BatchCreatePage() {
       }
       setBarcodes((prev) => [...prev, trimmed]);
       toast.success(`#${barcodes.length + 1}: ${trimmed}`);
+      setBarcodeInput("");
+    } catch {
+      toast.error("Could not check this barcode. It has been kept for retry.");
     } finally {
       setScanning(false);
-      setBarcodeInput("");
       inputRef.current?.focus();
     }
-  }, [barcodes]);
+  }, [barcodes, scanning, submitting]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") addBarcode(barcodeInput);
@@ -79,14 +84,16 @@ export default function BatchCreatePage() {
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
     if (barcodes.length === 0) {
       toast.error("Scan at least one vessel");
       return;
     }
 
+    setResult(null);
     setSubmitting(true);
     let successCount = 0;
-    let failCount = 0;
+    const failures: BatchFailure[] = [];
 
     for (const barcode of barcodes) {
       try {
@@ -108,125 +115,43 @@ export default function BatchCreatePage() {
         } else {
           const err = await res.json();
           toast.error(`${barcode}: ${err.error || "Failed"}`);
-          failCount++;
+          failures.push({ barcode, error: err.error || "Creation failed" });
         }
       } catch {
-        failCount++;
+        failures.push({ barcode, error: "Save could not be confirmed. Check this barcode before retrying." });
       }
     }
 
+    setBarcodes(failures.map((failure) => failure.barcode));
+    setResult({ succeeded: successCount, total: barcodes.length, failures });
     setSubmitting(false);
-
-    if (successCount > 0) {
-      toast.success(`Created ${successCount} vessels`);
-      setBarcodes([]);
-    }
-    if (failCount > 0) {
-      toast.error(`${failCount} vessel(s) failed`);
-    }
+    if (successCount > 0) toast.success(`Created ${successCount} vessels`);
+    if (failures.length > 0) toast.error(`${failures.length} remaining. Review the queue before retrying.`);
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="min-w-0 space-y-6 max-w-5xl mx-auto">
       <PageHeader
         title="Batch Create Vessels"
         description="Scan multiple barcodes and create vessels with the same settings"
       />
 
-      {/* Shared settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Vessel Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            These settings apply to all vessels in this batch.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Cultivar</Label>
-              <Select value={cultivarId} onValueChange={setCultivarId}>
-                <SelectTrigger><SelectValue placeholder="Select cultivar..." /></SelectTrigger>
-                <SelectContent>
-                  {cultivars.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.code ? `${c.code} — ` : ""}{c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedCultivar?.code && (
-                <p className="text-xs text-muted-foreground">Code: <span className="font-mono">{selectedCultivar.code}</span></p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Media Recipe</Label>
-              <Select value={mediaRecipeId} onValueChange={setMediaRecipeId}>
-                <SelectTrigger><SelectValue placeholder="Select recipe..." /></SelectTrigger>
-                <SelectContent>
-                  {mediaRecipes.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name} ({r.baseMedia})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Explants per Vessel</Label>
-              <Input
-                type="number"
-                value={explantCount}
-                onChange={(e) => setExplantCount(e.target.value)}
-                min="0"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Stage</Label>
-              <Select value={stage} onValueChange={setStage}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="initiation">Initiation</SelectItem>
-                  <SelectItem value="multiplication">Multiplication</SelectItem>
-                  <SelectItem value="rooting">Rooting</SelectItem>
-                  <SelectItem value="acclimation">Acclimation</SelectItem>
-                  <SelectItem value="hardening">Hardening</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 col-span-2">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="media_filled">Media Filled</SelectItem>
-                  <SelectItem value="planted">Planted</SelectItem>
-                  <SelectItem value="growing">Growing</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
+      <BatchResults result={result} />
+      <fieldset disabled={submitting} className="min-w-0 space-y-6">
       {/* Scanner */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-base">Scan Barcodes</CardTitle>
             {barcodes.length > 0 && (
-              <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-1 rounded">
+              <span className="text-xs bg-muted text-foreground px-2 py-1 rounded">
                 {barcodes.length} scanned
               </span>
             )}
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Input
               ref={inputRef}
               value={barcodeInput}
@@ -235,9 +160,9 @@ export default function BatchCreatePage() {
               placeholder="Scan barcode..."
               disabled={scanning}
               autoFocus
-              className="font-mono"
+              className="min-w-0 flex-1 h-12 font-mono" aria-label="Vessel barcode"
             />
-            <Button onClick={() => addBarcode(barcodeInput)} disabled={scanning || !barcodeInput}>
+            <Button className="min-h-12" onClick={() => addBarcode(barcodeInput)} disabled={scanning || !barcodeInput}>
               {scanning ? "..." : "Add"}
             </Button>
           </div>
@@ -252,6 +177,7 @@ export default function BatchCreatePage() {
                   >
                     {barcode}
                     <button
+                      aria-label={`Remove ${barcode}`}
                       onClick={() => removeBarcode(i)}
                       className="text-muted-foreground hover:text-destructive ml-1"
                     >
@@ -272,12 +198,92 @@ export default function BatchCreatePage() {
         </CardContent>
       </Card>
 
+      {/* Shared settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Vessel Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            These settings apply to all vessels in this batch.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
+            <div className="space-y-2">
+              <Label htmlFor="batch-create-field-1">Cultivar</Label>
+              <Select value={cultivarId} onValueChange={setCultivarId}>
+                <SelectTrigger id="batch-create-field-1"><SelectValue placeholder="Select cultivar..." /></SelectTrigger>
+                <SelectContent>
+                  {cultivars.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.code ? `${c.code} — ` : ""}{c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedCultivar?.code && (
+                <p className="text-xs text-muted-foreground">Code: <span className="min-w-0 flex-1 h-12 font-mono" aria-label="Vessel barcode">{selectedCultivar.code}</span></p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="batch-create-field-2">Media Recipe</Label>
+              <Select value={mediaRecipeId} onValueChange={setMediaRecipeId}>
+                <SelectTrigger id="batch-create-field-2"><SelectValue placeholder="Select recipe..." /></SelectTrigger>
+                <SelectContent>
+                  {mediaRecipes.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name} ({r.baseMedia})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="batch-create-field-3">Explants per Vessel</Label>
+              <Input id="batch-create-field-3"
+                type="number"
+                value={explantCount}
+                onChange={(e) => setExplantCount(e.target.value)}
+                min="0"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="batch-create-field-4">Stage</Label>
+              <Select value={stage} onValueChange={setStage}>
+                <SelectTrigger id="batch-create-field-4"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="initiation">Initiation</SelectItem>
+                  <SelectItem value="multiplication">Multiplication</SelectItem>
+                  <SelectItem value="rooting">Rooting</SelectItem>
+                  <SelectItem value="acclimation">Acclimation</SelectItem>
+                  <SelectItem value="hardening">Hardening</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="batch-create-field-5">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger id="batch-create-field-5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="media_filled">Media Filled</SelectItem>
+                  <SelectItem value="planted">Planted</SelectItem>
+                  <SelectItem value="growing">Growing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Submit */}
       {barcodes.length > 0 && (
         <Button
           onClick={handleSubmit}
-          disabled={submitting}
-          className="w-full"
+          disabled={submitting || scanning}
+          className="min-h-11 h-auto whitespace-normal w-full"
         >
           {submitting
             ? "Creating..."
@@ -285,6 +291,7 @@ export default function BatchCreatePage() {
           }
         </Button>
       )}
+      </fieldset>
     </div>
   );
 }

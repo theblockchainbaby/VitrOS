@@ -2,24 +2,26 @@ import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontSize: 9, fontFamily: "Helvetica" },
+  // Avoid inherited numeric lineHeight: react-pdf re-resolves it on every page
+  // split, multiplying the value and eventually placing fixed footers off-page.
+  page: { paddingTop: 36, paddingBottom: 60, paddingHorizontal: 36, fontSize: 9, fontFamily: "Helvetica" },
   header: { marginBottom: 20 },
   title: { fontSize: 18, fontWeight: "bold", fontFamily: "Helvetica-Bold" },
   subtitle: { fontSize: 10, color: "#6b7280", marginTop: 4 },
-  orgName: { fontSize: 11, color: "#16a34a", fontFamily: "Helvetica-Bold", marginBottom: 2 },
+  orgName: { fontSize: 11, color: "#28634f", fontFamily: "Helvetica-Bold", marginBottom: 2 },
   section: { marginTop: 16, marginBottom: 8 },
   sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", marginBottom: 8, borderBottomWidth: 1, borderBottomColor: "#e5e7eb", paddingBottom: 4 },
   table: { width: "100%" },
   tableHeader: { flexDirection: "row", backgroundColor: "#f3f4f6", borderBottomWidth: 1, borderBottomColor: "#d1d5db", paddingVertical: 4, paddingHorizontal: 4 },
   tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#e5e7eb", paddingVertical: 3, paddingHorizontal: 4 },
   tableRowAlt: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#e5e7eb", paddingVertical: 3, paddingHorizontal: 4, backgroundColor: "#fafafa" },
-  th: { fontFamily: "Helvetica-Bold", fontSize: 8 },
-  td: { fontSize: 8 },
+  th: { fontFamily: "Helvetica-Bold", fontSize: 8, paddingRight: 6 },
+  td: { fontSize: 8, paddingRight: 6 },
   kpiRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
   kpiCard: { flex: 1, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 4, padding: 10 },
   kpiValue: { fontSize: 20, fontFamily: "Helvetica-Bold" },
   kpiLabel: { fontSize: 8, color: "#6b7280", marginTop: 2 },
-  footer: { position: "absolute", bottom: 30, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", fontSize: 7, color: "#9ca3af" },
+  footer: { position: "absolute", bottom: 30, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", fontSize: 8, color: "#64716a" },
   badge: { paddingHorizontal: 4, paddingVertical: 1, borderRadius: 2, fontSize: 7 },
   greenBg: { backgroundColor: "#dcfce7", color: "#166534" },
   redBg: { backgroundColor: "#fef2f2", color: "#991b1b" },
@@ -32,6 +34,7 @@ function PageFooter({ orgName, date }: { orgName: string; date: string }) {
     <View style={styles.footer} fixed>
       <Text>VitrOS — {orgName}</Text>
       <Text>Generated {date}</Text>
+      <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
     </View>
   );
 }
@@ -82,15 +85,15 @@ export function VesselReport({ orgName, date, vessels }: { orgName: string; date
     <Document>
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Header orgName={orgName} title="Vessel Inventory Report" date={date} />
-        <Text style={{ fontSize: 9, marginBottom: 8 }}>{vessels.length} vessels total</Text>
+        <Text style={{ fontSize: 9, marginBottom: 8 }}>{vessels.length} vessels included · latest 500 maximum</Text>
         <View style={styles.table}>
-          <View style={styles.tableHeader}>
+          <View style={styles.tableHeader} fixed>
             {cols.map((col) => (
               <Text key={col.key} style={[styles.th, { width: col.width }]}>{col.label}</Text>
             ))}
           </View>
           {vessels.map((v, i) => (
-            <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+            <View key={i} wrap={false} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
               {cols.map((col) => (
                 <Text key={col.key} style={[styles.td, { width: col.width }]}>
                   {String(v[col.key as keyof VesselRow])}
@@ -124,6 +127,7 @@ export function ProductionReport(data: ProductionData) {
     <Document>
       <Page size="A4" style={styles.page}>
         <Header orgName={data.orgName} title="Production Summary Report" date={data.date} />
+        <Text style={styles.subtitle}>Current inventory includes media preparation. Contamination and multiplication ratios use all recorded vessels.</Text>
 
         <View style={styles.kpiRow}>
           <View style={styles.kpiCard}>
@@ -153,7 +157,7 @@ export function ProductionReport(data: ProductionData) {
               <Text style={[styles.th, { width: "20%" }]}>% of Active</Text>
             </View>
             {data.vesselsByStage.map((s, i) => (
-              <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <View key={i} wrap={false} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={[styles.td, { width: "60%", textTransform: "capitalize" }]}>{s.stage.replace(/_/g, " ")}</Text>
                 <Text style={[styles.td, { width: "20%" }]}>{s.count}</Text>
                 <Text style={[styles.td, { width: "20%" }]}>
@@ -174,7 +178,7 @@ export function ProductionReport(data: ProductionData) {
               <Text style={[styles.th, { width: "20%" }]}>% of Active</Text>
             </View>
             {data.vesselsByCultivar.map((c, i) => (
-              <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <View key={i} wrap={false} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={[styles.td, { width: "40%" }]}>{c.cultivar}</Text>
                 <Text style={[styles.td, { width: "20%" }]}>{c.count}</Text>
                 <Text style={[styles.td, { width: "20%" }]}>{c.explants}</Text>
@@ -210,7 +214,7 @@ export function ContaminationReport(data: ContaminationData) {
     <Document>
       <Page size="A4" style={styles.page}>
         <Header orgName={data.orgName} title="Contamination Report" date={data.date} />
-        <Text style={{ fontSize: 9, color: "#6b7280", marginBottom: 12 }}>Period: {data.period}</Text>
+        <Text style={{ fontSize: 9, color: "#6b7280", marginBottom: 12 }}>Period: {data.period}. Rate compares contamination recorded in this period with vessels created in the same period; these may be different vessel cohorts.</Text>
 
         <View style={styles.kpiRow}>
           <View style={styles.kpiCard}>
@@ -236,7 +240,7 @@ export function ContaminationReport(data: ContaminationData) {
               <Text style={[styles.th, { width: "25%" }]}>% of Contaminated</Text>
             </View>
             {data.byType.map((t, i) => (
-              <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <View key={i} wrap={false} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={[styles.td, { width: "50%", textTransform: "capitalize" }]}>{t.type}</Text>
                 <Text style={[styles.td, { width: "25%" }]}>{t.count}</Text>
                 <Text style={[styles.td, { width: "25%" }]}>
@@ -256,7 +260,7 @@ export function ContaminationReport(data: ContaminationData) {
               <Text style={[styles.th, { width: "25%" }]}>% of Contaminated</Text>
             </View>
             {data.byCultivar.map((c, i) => (
-              <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <View key={i} wrap={false} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={[styles.td, { width: "50%" }]}>{c.cultivar}</Text>
                 <Text style={[styles.td, { width: "25%" }]}>{c.count}</Text>
                 <Text style={[styles.td, { width: "25%" }]}>
@@ -284,6 +288,32 @@ interface ActivityRow {
   date: string;
 }
 
+// Keep ordinary rows together. Large notes become bounded continuation rows
+// with repeated metadata, so neither a page break nor an oversized row loses
+// the relationship between the note and its vessel/operator.
+function activityNoteParts(notes: string): string[] {
+  if (!notes) return [""];
+  const parts: string[] = [];
+  let start = 0;
+  while (start < notes.length) {
+    let end = Math.min(start + 900, notes.length);
+    let newlines = 0;
+    for (let index = start; index < end; index++) {
+      if (notes[index] === "\n" && ++newlines === 20) {
+        end = index + 1;
+        break;
+      }
+    }
+    if (end < notes.length) {
+      const space = notes.lastIndexOf(" ", end - 1);
+      if (space > start + (end - start) / 2) end = space + 1;
+    }
+    parts.push(notes.slice(start, end));
+    start = end;
+  }
+  return parts;
+}
+
 export function ActivityReport({ orgName, date, activities }: { orgName: string; date: string; activities: ActivityRow[] }) {
   const cols = [
     { key: "date", label: "Date", width: "15%" },
@@ -298,24 +328,25 @@ export function ActivityReport({ orgName, date, activities }: { orgName: string;
     <Document>
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Header orgName={orgName} title="Activity Log Report" date={date} />
-        <Text style={{ fontSize: 9, marginBottom: 8 }}>{activities.length} activities</Text>
+        <Text style={{ fontSize: 9, marginBottom: 8 }}>{activities.length} activities included · latest 500 maximum</Text>
         <View style={styles.table}>
-          <View style={styles.tableHeader}>
+          <View style={styles.tableHeader} fixed>
             {cols.map((col) => (
               <Text key={col.key} style={[styles.th, { width: col.width }]}>{col.label}</Text>
             ))}
           </View>
-          {activities.map((a, i) => (
-            <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+          {activities.flatMap((a, i) => activityNoteParts(a.notes).map((notes, part) => (
+            <View key={`${i}-${part}`} wrap={false} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
               {cols.map((col) => (
                 <Text key={col.key} style={[styles.td, { width: col.width }]}>
                   {col.key === "type"
                     ? a.type.replace(/_/g, " ")
+                    : col.key === "notes" ? `${part > 0 ? "(continued) " : ""}${notes}`
                     : String(a[col.key as keyof ActivityRow] || "")}
                 </Text>
               ))}
             </View>
-          ))}
+          )))}
         </View>
         <PageFooter orgName={orgName} date={date} />
       </Page>

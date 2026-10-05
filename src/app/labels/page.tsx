@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,10 +41,15 @@ export default function LabelsPage() {
   const [zebraPrinterName, setZebraPrinterName] = useState<string>("");
   const [printing, setPrinting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [printStatus, setPrintStatus] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewBarcode, setPreviewBarcode] = useState("");
+  const [previewQr, setPreviewQr] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addByBarcode = async () => {
-    if (!barcodeInput.trim()) return;
+    if (!barcodeInput.trim() || loading) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/vessels/barcode?code=${encodeURIComponent(barcodeInput.trim())}`);
@@ -76,10 +82,21 @@ export default function LabelsPage() {
 
   const loadRecentVessels = async () => {
     setLoading(true);
-    const res = await fetch("/api/vessels?limit=20");
-    const data = await res.json();
-    setVessels(data.vessels || []);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const res = await fetch("/api/vessels?limit=20");
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setVessels((previous) => {
+        const merged = new Map(previous.map((v) => [v.id, v]));
+        (data.vessels || []).forEach((v: Vessel) => merged.set(v.id, v));
+        return [...merged.values()];
+      });
+    } catch {
+      setLoadError("Recent vessels could not be loaded. You can retry or add a vessel by barcode.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const checkZebra = async () => {
@@ -92,6 +109,27 @@ export default function LabelsPage() {
     loadRecentVessels();
     checkZebra();
   }, []);
+
+  const previewVessel = vessels.find((v) => selected.has(v.id));
+  useEffect(() => {
+    let cancelled = false;
+    setPreviewBarcode("");
+    setPreviewQr("");
+    setPreviewError(null);
+    if (previewVessel) {
+      if (labelFormat !== "qr") {
+        try {
+          setPreviewBarcode(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(generateBarcodeSVG(previewVessel.barcode))}`);
+        } catch {
+          setPreviewError("This barcode contains characters Code128 cannot encode. Choose QR Code to preview and print this vessel label.");
+        }
+      }
+      if (labelFormat !== "barcode") {
+        generateQRCodeDataURL(previewVessel.barcode).then((url) => { if (!cancelled) setPreviewQr(url); }).catch(() => { if (!cancelled) setPreviewError("The QR preview could not be generated. Select the label again to retry."); });
+      }
+    }
+    return () => { cancelled = true; };
+  }, [previewVessel, labelFormat]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -118,11 +156,14 @@ export default function LabelsPage() {
 
   const handleZebraPrint = async () => {
     const selectedVessels = vessels.filter((v) => selected.has(v.id));
+    if (printing) return;
     if (selectedVessels.length === 0) {
       toast.error("Select at least one vessel");
       return;
     }
     setPrinting(true);
+    setPrintStatus(null);
+    let sent = 0;
     try {
       for (const v of selectedVessels) {
         const zpl = generateVesselZPL({
@@ -134,11 +175,16 @@ export default function LabelsPage() {
         });
         const result = await printZPLViaBrowserPrint(zpl);
         if (!result.success) {
+          setPrintStatus(`${sent} of ${selectedVessels.length} labels sent. ${result.error || "Sending failed"}. Check the printer before retrying.`);
           toast.error(result.error || "Print failed");
           return;
         }
+        sent++;
       }
+      setPrintStatus(`${sent} labels sent to Zebra Browser Print. Check the printed labels and scan one to verify the output.`);
       toast.success(`Sent ${selectedVessels.length} label${selectedVessels.length !== 1 ? "s" : ""} to Zebra printer`);
+    } catch {
+      setPrintStatus(`${sent} of ${selectedVessels.length} labels sent. Sending was interrupted; check the printer before retrying.`);
     } finally {
       setPrinting(false);
     }
@@ -146,6 +192,7 @@ export default function LabelsPage() {
 
   const handlePrint = async () => {
     const selectedVessels = vessels.filter((v) => selected.has(v.id));
+    if (printing) return;
     if (selectedVessels.length === 0) {
       toast.error("Select at least one vessel");
       return;
@@ -159,6 +206,9 @@ export default function LabelsPage() {
       return;
     }
 
+    setPrinting(true);
+    setPrintStatus(null);
+    try {
     const style = sizeStyles[labelSize];
 
     // Pre-generate QR images so QR labels print real, scannable codes
@@ -201,138 +251,62 @@ export default function LabelsPage() {
     }).join("");
 
     if (printLabels(labelsHTML, printWindow)) {
-      toast.success(`Printing ${selectedVessels.length} labels`);
+      setPrintStatus(`Print window opened for ${selectedVessels.length} labels. Choose your printer and paper size there, then check the printed output.`);
+      toast.success("Print window ready");
     } else {
       toast.error("Could not open the print window");
+    }
+    } catch {
+      printWindow.close();
+      toast.error("Labels could not be prepared. Your selection has been kept.");
+    } finally {
+      setPrinting(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         title="Label Printing"
         description="Generate and print barcode labels for vessels"
+        actions={<Button asChild variant="outline" size="sm"><Link href="/integrations">Device setup</Link></Button>}
       />
+      <p className="text-sm text-muted-foreground">1. Select vessels · 2. Choose label format and printer · 3. Print and verify a label</p>
 
       {/* Scanner */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Input
               ref={inputRef}
               value={barcodeInput}
               onChange={(e) => setBarcodeInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addByBarcode()}
               placeholder="Scan barcode to add..."
-              className="font-mono"
+              className="min-w-0 flex-1 h-12 font-mono"
+              aria-label="Vessel barcode to add"
+              disabled={loading}
             />
-            <Button onClick={addByBarcode} disabled={loading}>Add</Button>
+            <Button className="min-h-12" onClick={addByBarcode} disabled={loading}>Add</Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
-            <span>Label Settings</span>
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1 text-sm">
-              <button
-                onClick={() => setPrintMode("browser")}
-                className={`px-3 py-1 rounded-md transition-colors ${printMode === "browser" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
-              >
-                Browser Print
-              </button>
-              <button
-                onClick={() => setPrintMode("zebra")}
-                className={`px-3 py-1 rounded-md transition-colors ${printMode === "zebra" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
-              >
-                Zebra ZD421
-              </button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {printMode === "browser" ? (
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label>Format</Label>
-                <Select value={labelFormat} onValueChange={(v) => setLabelFormat(v as LabelFormat)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="barcode">Barcode Only</SelectItem>
-                    <SelectItem value="qr">QR Code</SelectItem>
-                    <SelectItem value="both">Both</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Size</Label>
-                <Select value={labelSize} onValueChange={(v) => setLabelSize(v as LabelSize)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="small">Small (1&quot; x 0.5&quot;)</SelectItem>
-                    <SelectItem value="medium">Medium (2&quot; x 1&quot;)</SelectItem>
-                    <SelectItem value="large">Large (3&quot; x 1.5&quot;)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button onClick={handlePrint} disabled={selected.size === 0} className="w-full">
-                  Print {selected.size} Label{selected.size !== 1 ? "s" : ""}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className={`flex items-center gap-2 p-3 rounded-lg border text-sm ${
-                zebraAvailable === true ? "bg-green-50 border-green-200 text-green-700" :
-                zebraAvailable === false ? "bg-red-50 border-red-200 text-red-700" :
-                "bg-muted border-border text-muted-foreground"
-              }`}>
-                <div className={`size-2 rounded-full ${zebraAvailable === true ? "bg-green-500" : zebraAvailable === false ? "bg-red-500" : "bg-gray-400"}`} />
-                {zebraAvailable === true ? (
-                  <span>Zebra Browser Print detected — {zebraPrinterName || "Printer ready"}</span>
-                ) : zebraAvailable === false ? (
-                  <span>
-                    Zebra Browser Print not detected.{" "}
-                    <a href="https://www.zebra.com/us/en/software/zebra-utilities/browser-print.html" target="_blank" rel="noopener noreferrer" className="underline">
-                      Download here
-                    </a>
-                  </span>
-                ) : (
-                  <span>Checking for Zebra Browser Print...</span>
-                )}
-                <button onClick={checkZebra} className="ml-auto text-xs underline">Refresh</button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                ZPL labels are formatted for 2.25&quot; x 1.25&quot; thermal labels (Zebra ZD421). Includes barcode, cultivar, stage, and subculture number.
-              </p>
-              <Button
-                onClick={handleZebraPrint}
-                disabled={selected.size === 0 || printing || zebraAvailable !== true}
-                className="w-full"
-              >
-                {printing ? "Sending to printer..." : `Print ${selected.size} Label${selected.size !== 1 ? "s" : ""} via Zebra`}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
+      {loadError && <div role="alert" className="rounded-lg border p-4 space-y-2"><p className="text-sm">{loadError}</p><Button variant="outline" size="sm" disabled={loading} onClick={loadRecentVessels}>Retry recent vessels</Button></div>}
+      {printStatus && <p role="status" className="rounded-lg border bg-muted/40 p-4 text-sm">{printStatus}</p>}
       {/* Vessel selection */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-base">Select Vessels ({selected.size} selected)</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="ghost" size="sm" onClick={selectAll}>Select All</Button>
               <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {vessels.length === 0 ? (
+          {loading && vessels.length === 0 ? <p role="status" className="py-4 text-sm text-muted-foreground">Loading recent vessels…</p> : vessels.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No vessels loaded. Scan barcodes or load recent vessels.</p>
           ) : (
             <Table>
@@ -346,16 +320,18 @@ export default function LabelsPage() {
               </TableHeader>
               <TableBody>
                 {vessels.map((v) => (
-                  <TableRow key={v.id} className="cursor-pointer" onClick={() => toggleSelect(v.id)}>
+                  <TableRow key={v.id} data-state={selected.has(v.id) ? "selected" : undefined}>
                     <TableCell>
                       <input
                         type="checkbox"
+                        id={`label-${v.id}`}
+                        aria-label={`Select ${v.barcode}`}
                         checked={selected.has(v.id)}
                         onChange={() => toggleSelect(v.id)}
-                        className="rounded"
+                        className="size-4 rounded accent-primary"
                       />
                     </TableCell>
-                    <TableCell className="font-mono">{v.barcode}</TableCell>
+                    <TableCell><label htmlFor={`label-${v.id}`} className="cursor-pointer font-mono">{v.barcode}</label></TableCell>
                     <TableCell>{v.cultivar?.name || "—"}</TableCell>
                     <TableCell><StageBadge stage={v.stage} /></TableCell>
                   </TableRow>
@@ -365,6 +341,118 @@ export default function LabelsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex flex-wrap items-center justify-between gap-3">
+            <span>Label Settings</span>
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1 text-sm">
+              <button
+                aria-pressed={printMode === "browser"}
+                onClick={() => setPrintMode("browser")}
+                className={`px-3 py-1 rounded-md transition-colors ${printMode === "browser" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
+              >
+                Browser Print
+              </button>
+              <button
+                aria-pressed={printMode === "zebra"}
+                onClick={() => setPrintMode("zebra")}
+                className={`px-3 py-1 rounded-md transition-colors ${printMode === "zebra" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
+              >
+                Zebra ZD421
+              </button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {previewVessel && printMode === "browser" && (
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <p className="text-sm font-medium break-all">Preview · {previewVessel.barcode}</p>
+              {previewError && <p role="alert" className="text-sm text-destructive">{previewError}</p>}
+              <div className="max-w-full overflow-auto">
+                <div className="rounded border bg-white text-black p-3 text-center space-y-1" style={{ width: sizeStyles[labelSize].width, fontSize: sizeStyles[labelSize].fontSize }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Generated SVG must preserve barcode bars and quiet zones without image optimization. */}
+                  {previewBarcode && <img src={previewBarcode} alt={`Barcode ${previewVessel.barcode}`} className="max-w-full mx-auto" />}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Generated QR data URL is a local print preview, not a network image. */}
+                  {previewQr && <img src={previewQr} alt={`QR code ${previewVessel.barcode}`} className="size-24 mx-auto" />}
+                  {labelFormat === "qr" && <p className="font-mono break-all">{previewVessel.barcode}</p>}
+                  <p className="font-semibold">{previewVessel.cultivar?.name}</p>
+                  <p>{previewVessel.stage?.toUpperCase()}</p>
+                  <p>{format(new Date(previewVessel.createdAt), "MM/dd/yyyy")}</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Preview of the first selected vessel. Confirm dimensions and scale in your browser print dialog; print one label and scan it before a full run.</p>
+            </div>
+          )}
+          {printMode === "browser" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 [&>*]:min-w-0 [&>*]:break-words">
+              <div>
+                <Label htmlFor="labels-field-1">Format</Label>
+                <Select value={labelFormat} onValueChange={(v) => setLabelFormat(v as LabelFormat)}>
+                  <SelectTrigger id="labels-field-1" className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="barcode">Barcode Only</SelectItem>
+                    <SelectItem value="qr">QR Code</SelectItem>
+                    <SelectItem value="both">Both</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="labels-field-2">Size</Label>
+                <Select value={labelSize} onValueChange={(v) => setLabelSize(v as LabelSize)}>
+                  <SelectTrigger id="labels-field-2" className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="small">Small (1&quot; x 0.5&quot;)</SelectItem>
+                    <SelectItem value="medium">Medium (2&quot; x 1&quot;)</SelectItem>
+                    <SelectItem value="large">Large (3&quot; x 1.5&quot;)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button onClick={handlePrint} disabled={selected.size === 0 || printing} className="min-h-11 w-full">
+                  {printing ? "Preparing labels…" : `Print ${selected.size} Label${selected.size !== 1 ? "s" : ""}`}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className={`flex items-center gap-2 p-3 rounded-lg border text-sm ${
+                zebraAvailable === true ? "bg-primary/5 border-primary/20 text-primary" :
+                zebraAvailable === false ? "bg-amber-500/10 border-amber-600/30 text-amber-800 dark:text-amber-300" :
+                "bg-muted border-border text-muted-foreground"
+              }`}>
+                <div className={`size-2 rounded-full ${zebraAvailable === true ? "bg-primary" : zebraAvailable === false ? "bg-amber-600" : "bg-muted-foreground"}`} />
+                {zebraAvailable === true ? (
+                  <span>Device detected — {zebraPrinterName || "Zebra Browser Print"}</span>
+                ) : zebraAvailable === false ? (
+                  <span>
+                    Zebra Browser Print not detected.{" "}
+                    <a href="https://www.zebra.com/us/en/software/zebra-utilities/browser-print.html" target="_blank" rel="noopener noreferrer" className="underline">
+                      Download here
+                    </a>
+                  </span>
+                ) : (
+                  <span>Checking for Zebra Browser Print...</span>
+                )}
+                <button onClick={checkZebra} className="min-h-11 ml-auto text-xs underline">Refresh</button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                ZPL labels are formatted for 2.25&quot; x 1.25&quot; thermal labels (Zebra ZD421). Includes barcode, cultivar, stage, and subculture number.
+              </p>
+              <Button
+                onClick={handleZebraPrint}
+                disabled={selected.size === 0 || printing || zebraAvailable !== true}
+                className="min-h-11 w-full"
+              >
+                {printing ? "Sending to printer..." : `Print ${selected.size} Label${selected.size !== 1 ? "s" : ""} via Zebra`}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
     </div>
   );
 }

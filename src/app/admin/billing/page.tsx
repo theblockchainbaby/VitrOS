@@ -1,5 +1,8 @@
 "use client";
 
+import { PageHeader } from "@/components/page-header";
+import { PageLoading, PageError } from "@/components/page-state";
+
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,7 +132,7 @@ function UsageBar({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex flex-wrap gap-3 items-center justify-between text-sm">
         <div className="flex items-center gap-2">
           <Icon className="h-4 w-4 text-muted-foreground" />
           <span>{label}</span>
@@ -154,7 +157,7 @@ function UsageBar({
 
 export default function BillingPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<PageLoading label="Loading billing…" />}>
       <BillingContent />
     </Suspense>
   );
@@ -164,21 +167,24 @@ function BillingContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [annual, setAnnual] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get("success")) toast.success("Subscription activated!");
+    if (searchParams.get("success")) toast.success("Checkout completed. Refreshing your subscription status…");
     if (searchParams.get("canceled")) toast.info("Checkout canceled.");
     fetchStatus();
   }, [searchParams]);
 
   const fetchStatus = () => {
+    setLoading(true);
+    setError("");
     fetch("/api/billing/status")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Billing information is unavailable. Please try again."); return r.json(); })
       .then(setStatus)
-      .catch(() => toast.error("Failed to load billing info"))
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   };
 
@@ -220,15 +226,8 @@ function BillingContent() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!status) return null;
+  if (loading) return <div className="space-y-6"><PageHeader title="Billing" description="Manage your subscription and usage" /><PageLoading label="Loading billing information…" /></div>;
+  if (error || !status) return <div className="space-y-6"><PageHeader title="Billing" description="Manage your subscription and usage" /><PageError message={error || "Billing information is unavailable."} retry={fetchStatus} /></div>;
 
   const statusStyle = STATUS_STYLES[status.planStatus] || STATUS_STYLES.active;
   const trialDaysLeft = status.trialEndsAt
@@ -242,17 +241,12 @@ function BillingContent() {
     : null;
 
   return (
-    <div className="space-y-6 p-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
-        <p className="text-muted-foreground">
-          Manage your subscription and usage.
-        </p>
-      </div>
+    <div className="space-y-6 min-w-0">
+      <PageHeader title="Billing" description="Manage your subscription and usage" />
 
       {/* Past due warning */}
       {status.planStatus === "past_due" && (
-        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center justify-between">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 flex flex-wrap gap-3 items-center justify-between">
           <div className="flex items-center gap-3 text-red-700 dark:text-red-400">
             <AlertTriangle className="h-5 w-5 shrink-0" />
             <div>

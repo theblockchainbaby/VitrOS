@@ -1,0 +1,172 @@
+{
+  "checkedAt": "2026-10-05T17:30:25.325Z",
+  "origin": "http://127.0.0.1:3101",
+  "checks": [
+    {
+      "route": "/",
+      "status": 200,
+      "title": "Plant Tissue Culture Lab Management Software | VitrOS",
+      "canonical": "https://vitroslabs.com/",
+      "robots": "index, follow",
+      "og": "https://vitroslabs.com/images/product/tissue-culture-dashboard.png",
+      "h1": [
+        "Plant tissue culture software for a connected lab."
+      ],
+      "schema": [
+        {
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": "https://vitroslabs.com/#organization",
+              "name": "VitrOS Labs",
+              "url": "https://vitroslabs.com",
+              "logo": "https://vitroslabs.com/logo-icon.png",
+              "email": "support@vitroslabs.com"
+            },
+            {
+              "@type": "SoftwareApplication",
+              "@id": "https://vitroslabs.com/#software",
+              "name": "VitrOS",
+              "applicationCategory": "BusinessApplication",
+              "operatingSystem": "Web",
+              "description": "Manage plant tissue culture vessels, track lineage, schedule subcultures, and review contamination in one connected lab workspace. Explore VitrOS.",
+              "url": "https://vitroslabs.com",
+              "screenshot": "https://vitroslabs.com/images/product/tissue-culture-dashboard.png",
+              "publisher": {
+                "@id": "https://vitroslabs.com/#organization"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "status": 200,
+      "title": "Vessel Tracking & Tissue Culture Software Features | VitrOS",
+      "canonical": "https://vitroslabs.com/features",
+      "robots": "index, follow",
+      "og": "https://vitroslabs.com/images/product/tissue-culture-dashboard.png",
+      "h1": [
+        "Vessel tracking and tissue culture lab tools"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/pricing",
+      "status": 200,
+      "title": "Tissue Culture Software Pricing & Plans | VitrOS",
+      "canonical": "https://vitroslabs.com/pricing",
+      "robots": "index, follow",
+      "og": "https://vitroslabs.com/images/product/tissue-culture-dashboard.png",
+      "h1": [
+        "Tissue culture software pricing"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/demo",
+      "status": 200,
+      "title": "Tissue Culture Software Demo | VitrOS",
+      "canonical": "https://vitroslabs.com/demo",
+      "robots": "index, follow",
+      "og": "https://vitroslabs.com/images/product/tissue-culture-dashboard.png",
+      "h1": [
+        "See VitrOS tissue culture software in action"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/why-vitros",
+      "status": 200,
+      "title": "Replace Tissue Culture Spreadsheets with VitrOS",
+      "canonical": "https://vitroslabs.com/why-vitros",
+      "robots": "index, follow",
+      "og": "https://vitroslabs.com/images/product/tissue-culture-dashboard.png",
+      "h1": [
+        "Tissue culture records beyond spreadsheets"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/blog",
+      "status": 200,
+      "title": "Tissue Culture Lab Management Guides | VitrOS",
+      "canonical": "https://vitroslabs.com/blog",
+      "robots": "index, follow",
+      "og": "https://vitroslabs.com/images/product/tissue-culture-dashboard.png",
+      "h1": [
+        "Tissue culture lab management guides"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/login",
+      "status": 200,
+      "title": "Plant Tissue Culture Lab Management Software | VitrOS",
+      "robots": "noindex, nofollow",
+      "h1": [
+        "Sign in to your lab"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/signup",
+      "status": 200,
+      "title": "Plant Tissue Culture Lab Management Software | VitrOS",
+      "robots": "noindex, nofollow",
+      "h1": [
+        "Create your lab workspace"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/forgot-password",
+      "status": 200,
+      "title": "Plant Tissue Culture Lab Management Software | VitrOS",
+      "robots": "noindex, nofollow",
+      "h1": [
+        "Reset your password"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/reset-password",
+      "status": 200,
+      "title": "Plant Tissue Culture Lab Management Software | VitrOS",
+      "robots": "noindex, nofollow",
+      "h1": [
+        "Choose a new password"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/offline",
+      "status": 200,
+      "title": "Plant Tissue Culture Lab Management Software | VitrOS",
+      "robots": "noindex, nofollow",
+      "h1": [
+        "You’re offline"
+      ],
+      "schema": []
+    },
+    {
+      "route": "/blog/fixture-unavailable",
+      "status": 200,
+      "title": "Article unavailable | VitrOS",
+      "robots": "noindex",
+      "h1": [
+        "Article temporarily unavailable"
+      ],
+      "schema": []
+    },
+    {
+      "test": "authenticated home remains dashboard",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "sitemap": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n<url>\n<loc>https://vitroslabs.com/</loc>\n</url>\n<url>\n<loc>https://vitroslabs.com/features</loc>\n</url>\n<url>\n<loc>https://vitroslabs.com/pricing</loc>\n</url>\n<url>\n<loc>https://vitroslabs.com/demo</loc>\n</url>\n<url>\n<loc>https://vitroslabs.com/blog</loc>\n</url>\n<url>\n<loc>https://vitroslabs.com/why-vitros</loc>\n</url>\n</urlset>\n",
+  "robots": "User-Agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: https://vitroslabs.com/sitemap.xml\n"
+}

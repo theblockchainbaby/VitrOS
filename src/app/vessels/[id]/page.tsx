@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PageError } from "@/components/page-state";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge, HealthBadge, StageBadge } from "@/components/status-badge";
 import { StagePipeline } from "@/components/stage-pipeline";
@@ -28,6 +29,7 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
   const router = useRouter();
   const [vessel, setVessel] = useState<Vessel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [protocols, setProtocols] = useState<Protocol[]>([]);
 
@@ -62,36 +64,39 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
   const [editNotes, setEditNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const fetchVessel = () => {
+  const fetchVessel = useCallback(() => {
+    setLoadError(null);
+    setLoading(true);
     fetch(`/api/vessels/${id}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(r.status === 404 ? "Vessel not found." : "Vessel could not be loaded. Try again."); return r.json(); })
       .then(setVessel)
+      .catch(() => setLoadError("Vessel could not be loaded. Try again."))
       .finally(() => setLoading(false));
-  };
+  }, [id]);
 
-  const fetchPhotos = () => {
+  const fetchPhotos = useCallback(() => {
     fetch(`/api/photos?vesselId=${id}`)
       .then((r) => r.json())
       .then(setPhotos)
       .catch(() => {});
-  };
+  }, [id]);
 
-  const fetchProtocols = (stage: string) => {
+  const fetchProtocols = useCallback((stage: string) => {
     fetch(`/api/protocols?stage=${stage}`)
       .then((r) => r.json())
       .then(setProtocols)
       .catch(() => {});
-  };
+  }, []);
 
   useEffect(() => {
     fetchVessel();
     fetchPhotos();
     fetch("/api/cultivars").then((r) => r.json()).then(setCultivars).catch(() => {});
-  }, [id]);
+  }, [fetchVessel, fetchPhotos]);
 
   useEffect(() => {
     if (vessel?.stage) fetchProtocols(vessel.stage);
-  }, [vessel?.stage]);
+  }, [vessel?.stage, fetchProtocols]);
 
   const handleAdvanceStage = async () => {
     setAdvancing(true);
@@ -109,6 +114,8 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         const err = await res.json();
         toast.error(err.error || "Failed to advance stage");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setAdvancing(false);
     }
@@ -177,6 +184,8 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         const err = await res.json();
         toast.error(err.error || "Failed");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setUpdatingHealth(false);
     }
@@ -196,6 +205,8 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         const err = await res.json();
         toast.error(err.error || "Cannot undo");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setUndoing(false);
     }
@@ -223,6 +234,8 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         const err = await res.json();
         toast.error(err.error || "Failed");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setMoving(false);
     }
@@ -253,6 +266,8 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         const err = await res.json();
         toast.error(err.error || "Failed");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setPlanting(false);
     }
@@ -300,6 +315,8 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         const err = await res.json();
         toast.error(err.error || "Failed to save");
       }
+    } catch {
+      toast.error("The operation could not be confirmed. Your entries have been kept. Check the record before retrying.");
     } finally {
       setSaving(false);
     }
@@ -314,6 +331,7 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
     }
   };
 
+  if (loadError) return <PageError message={loadError} retry={fetchVessel} />;
   if (loading) return <div className="text-center py-12 text-muted-foreground">Loading vessel...</div>;
   if (!vessel) return <div className="text-center py-12 text-muted-foreground">Vessel not found</div>;
 
@@ -322,12 +340,12 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
   const canAdvance = isActive && currentStageIndex >= 0 && currentStageIndex < STAGES.length - 1;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="min-w-0 space-y-6 max-w-5xl mx-auto">
       <PageHeader
         title={vessel.barcode}
         description={vessel.cultivar?.name || "No cultivar assigned"}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <StageBadge stage={vessel.stage} />
             <StatusBadge status={vessel.status} />
             <HealthBadge status={vessel.healthStatus} />
@@ -335,48 +353,14 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         }
       />
 
-      {/* Stage Pipeline */}
-      <Card>
-        <CardContent className="pt-6 pb-4">
-          <StagePipeline currentStage={vessel.stage} />
-        </CardContent>
-      </Card>
-
-      {/* SOP for Current Stage */}
-      {protocols.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">SOP: {protocols[0].name}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {protocols[0].safetyNotes && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-2 text-sm text-amber-700 dark:text-amber-300">
-                {protocols[0].safetyNotes}
-              </div>
-            )}
-            {protocols[0].steps.map((step: { order: number; instruction: string; duration?: string; critical?: boolean }, i: number) => (
-              <div key={i} className="flex gap-3 items-start">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${step.critical ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>
-                  {step.order}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm">{step.instruction}</p>
-                  {step.duration && <p className="text-xs text-muted-foreground">{step.duration}</p>}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Plant Action for media_filled vessels */}
       {vessel.status === "media_filled" && (
-        <Card className="border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800">
+        <Card className="border-primary/20 bg-primary/5">
           <CardContent className="pt-4 pb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-medium text-emerald-900 dark:text-emerald-200">Media Prep Vessel</p>
-                <p className="text-sm text-emerald-700 dark:text-emerald-400">This vessel has media but no plant yet. Assign a cultivar to activate it.</p>
+                <p className="font-medium text-foreground">Media Prep Vessel</p>
+                <p className="text-sm text-muted-foreground">This vessel has media but no plant yet. Assign a cultivar to activate it.</p>
               </div>
               <Dialog open={plantDialogOpen} onOpenChange={setPlantDialogOpen}>
                 <DialogTrigger asChild>
@@ -386,9 +370,9 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
                   <DialogHeader><DialogTitle>Plant Vessel</DialogTitle></DialogHeader>
                   <div className="space-y-4">
                     <div>
-                      <Label>Cultivar</Label>
+                      <Label htmlFor="vessels-id-field-1">Cultivar</Label>
                       <Select value={plantCultivarId} onValueChange={setPlantCultivarId}>
-                        <SelectTrigger className="mt-1"><SelectValue placeholder="Select cultivar" /></SelectTrigger>
+                        <SelectTrigger id="vessels-id-field-1" className="mt-1"><SelectValue placeholder="Select cultivar" /></SelectTrigger>
                         <SelectContent>
                           {cultivars.map((c) => (
                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -397,12 +381,12 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
                       </Select>
                     </div>
                     <div>
-                      <Label>Explant Count</Label>
-                      <Input type="number" min="1" value={plantExplantCount} onChange={(e) => setPlantExplantCount(e.target.value)} className="mt-1" />
+                      <Label htmlFor="vessels-id-field-2">Explant Count</Label>
+                      <Input id="vessels-id-field-2" type="number" min="1" value={plantExplantCount} onChange={(e) => setPlantExplantCount(e.target.value)} className="mt-1" />
                     </div>
                     <div>
-                      <Label>Notes</Label>
-                      <Textarea value={plantNotes} onChange={(e) => setPlantNotes(e.target.value)} rows={2} className="mt-1" placeholder="Optional..." />
+                      <Label htmlFor="vessels-id-field-3">Notes</Label>
+                      <Textarea id="vessels-id-field-3" value={plantNotes} onChange={(e) => setPlantNotes(e.target.value)} rows={2} className="mt-1" placeholder="Optional..." />
                     </div>
                     <Button onClick={handlePlant} disabled={planting} className="w-full">
                       {planting ? "Planting..." : "Plant Vessel"}
@@ -418,18 +402,14 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
       {/* Action Buttons */}
       {isActive && vessel.status !== "media_filled" && (
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => router.push("/scan")}>
-            Scan Another
-          </Button>
-          <Button size="sm" onClick={() => router.push(`/multiply/${vessel.id}`)}>
-            Multiply
-          </Button>
+          <Button variant="outline" size="sm" asChild><Link href="/scan">Scan Another</Link></Button>
+          <Button size="sm" asChild><Link href={`/multiply/${vessel.id}`}>Multiply</Link></Button>
           {canAdvance && (
             <Button size="sm" variant="secondary" onClick={() => setAdvanceConfirmOpen(true)} disabled={advancing}>
               {advancing ? "Advancing..." : "Advance Stage"}
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={handleUndo} disabled={undoing}>
+          <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={handleUndo} disabled={undoing}>
             {undoing ? "Undoing..." : "Undo Last"}
           </Button>
           <Dialog open={healthDialogOpen} onOpenChange={setHealthDialogOpen}>
@@ -440,9 +420,9 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
               <DialogHeader><DialogTitle>Health Check</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Health Status</Label>
+                  <Label htmlFor="vessels-id-field-4">Health Status</Label>
                   <Select value={healthStatus} onValueChange={setHealthStatus}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="vessels-id-field-4" className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {HEALTH_STATUSES.map((s) => (
                         <SelectItem key={s} value={s}>{HEALTH_STATUS_LABELS[s]}</SelectItem>
@@ -453,9 +433,9 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
                 {(healthStatus === "critical" || healthStatus === "necrotic" || healthStatus === "dead") && (
                   <>
                     <div>
-                      <Label>Contamination Type</Label>
+                      <Label htmlFor="vessels-id-field-5">Contamination Type</Label>
                       <Select value={contaminationType} onValueChange={setContaminationType}>
-                        <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
+                        <SelectTrigger id="vessels-id-field-5" className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
                         <SelectContent>
                           {CONTAMINATION_TYPES.map((t) => (
                             <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
@@ -464,8 +444,8 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
                       </Select>
                     </div>
                     <div>
-                      <Label>Photo Evidence (optional)</Label>
-                      <Input
+                      <Label htmlFor="vessels-id-field-6">Photo Evidence (optional)</Label>
+                      <Input id="vessels-id-field-6"
                         type="file"
                         accept="image/*"
                         capture="environment"
@@ -481,6 +461,7 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
                       />
                       {contamPhotoPreview && (
                         <div className="relative mt-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- This is the operator's local camera/file preview before upload. */}
                           <img src={contamPhotoPreview} alt="Contamination evidence" className="rounded-md max-h-32 object-cover" />
                           <Button
                             variant="ghost"
@@ -497,8 +478,8 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
                   </>
                 )}
                 <div>
-                  <Label>Notes</Label>
-                  <Textarea value={healthNotes} onChange={(e) => setHealthNotes(e.target.value)} rows={2} className="mt-1" />
+                  <Label htmlFor="vessels-id-field-7">Notes</Label>
+                  <Textarea id="vessels-id-field-7" value={healthNotes} onChange={(e) => setHealthNotes(e.target.value)} rows={2} className="mt-1" />
                 </div>
                 <Button onClick={handleHealthCheck} disabled={updatingHealth} className="w-full">
                   {updatingHealth ? "Saving..." : "Save Health Check"}
@@ -521,8 +502,8 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
                   </div>
                 </div>
                 <div>
-                  <Label>Notes</Label>
-                  <Textarea value={moveNotes} onChange={(e) => setMoveNotes(e.target.value)} rows={2} className="mt-1" />
+                  <Label htmlFor="vessels-id-field-8">Notes</Label>
+                  <Textarea id="vessels-id-field-8" value={moveNotes} onChange={(e) => setMoveNotes(e.target.value)} rows={2} className="mt-1" />
                 </div>
                 <Button onClick={handleMove} disabled={moving} className="w-full">
                   {moving ? "Moving..." : "Move Vessel"}
@@ -534,36 +515,36 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
             <DialogContent>
               <DialogHeader><DialogTitle>Edit Vessel Details</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Generation</Label>
-                    <Input type="number" min="0" value={editGeneration} onChange={(e) => setEditGeneration(e.target.value)} className="mt-1" />
+                    <Label htmlFor="vessels-id-field-9">Generation</Label>
+                    <Input id="vessels-id-field-9" type="number" min="0" value={editGeneration} onChange={(e) => setEditGeneration(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label>Subculture #</Label>
-                    <Input type="number" min="0" value={editSubcultureNumber} onChange={(e) => setEditSubcultureNumber(e.target.value)} className="mt-1" />
+                    <Label htmlFor="vessels-id-field-10">Subculture #</Label>
+                    <Input id="vessels-id-field-10" type="number" min="0" value={editSubcultureNumber} onChange={(e) => setEditSubcultureNumber(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label>Explants</Label>
-                    <Input type="number" min="0" value={editExplantCount} onChange={(e) => setEditExplantCount(e.target.value)} className="mt-1" />
+                    <Label htmlFor="vessels-id-field-11">Explants</Label>
+                    <Input id="vessels-id-field-11" type="number" min="0" value={editExplantCount} onChange={(e) => setEditExplantCount(e.target.value)} className="mt-1" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:break-words">
                   <div>
-                    <Label>Last Subculture Date</Label>
-                    <Input type="date" value={editLastSubcultureDate} onChange={(e) => handleLastSubcultureDateChange(e.target.value)} className="mt-1" />
+                    <Label htmlFor="vessels-id-field-12">Last Subculture Date</Label>
+                    <Input id="vessels-id-field-12" type="date" value={editLastSubcultureDate} onChange={(e) => handleLastSubcultureDateChange(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label>Next Subculture Date</Label>
-                    <Input type="date" value={editNextSubcultureDate} onChange={(e) => setEditNextSubcultureDate(e.target.value)} className="mt-1" />
+                    <Label htmlFor="vessels-id-field-13">Next Subculture Date</Label>
+                    <Input id="vessels-id-field-13" type="date" value={editNextSubcultureDate} onChange={(e) => setEditNextSubcultureDate(e.target.value)} className="mt-1" />
                     {editLastSubcultureDate && !editNextSubcultureDate && (
                       <p className="text-xs text-muted-foreground mt-1">Auto-calculated from last + 14 days</p>
                     )}
                   </div>
                 </div>
                 <div>
-                  <Label>Notes</Label>
-                  <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={2} className="mt-1" placeholder="Optional notes..." />
+                  <Label htmlFor="vessels-id-field-14">Notes</Label>
+                  <Textarea id="vessels-id-field-14" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={2} className="mt-1" placeholder="Optional notes..." />
                 </div>
                 <Button onClick={handleEditSave} disabled={saving} className="w-full">
                   {saving ? "Saving..." : "Save Changes"}
@@ -574,25 +555,39 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* Details */}
+      <nav aria-label="Vessel sections" className="flex flex-wrap gap-x-5 gap-y-2 border-b pb-3 text-sm">
+        <a href="#overview" className="text-primary hover:underline">Overview</a>
+        <a href="#history" className="text-primary hover:underline">History</a>
+        <a href="#lineage" className="text-primary hover:underline">Lineage</a>
+        {protocols.length > 0 && <a href="#protocol" className="text-primary hover:underline" onClick={() => { const section = document.getElementById("protocol"); if (section instanceof HTMLDetailsElement) section.open = true; }}>Protocol</a>}
+      </nav>
+      {/* Stage Pipeline */}
       <Card>
+        <CardContent className="pt-6 pb-4">
+          <StagePipeline currentStage={vessel.stage} />
+        </CardContent>
+      </Card>
+
+      {/* Details */}
+      <Card id="overview" className="scroll-mt-20">
         <CardHeader>
           <CardTitle className="text-base">Vessel Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm [&>*]:min-w-0 [&>*]:break-words">
             <span className="text-muted-foreground">Barcode</span>
-            <span
-              className="font-mono cursor-pointer hover:text-primary transition-colors"
-              title="Click to copy"
-              onClick={() => { navigator.clipboard.writeText(vessel.barcode); toast.success("Barcode copied"); }}
-            >{vessel.barcode}</span>
+            <button
+              type="button"
+              className="font-mono text-left hover:text-primary transition-colors break-all"
+              aria-label={`Copy barcode ${vessel.barcode}`}
+              onClick={() => { navigator.clipboard.writeText(vessel.barcode).then(() => toast.success("Barcode copied")).catch(() => toast.error("Could not copy the barcode")); }}
+            >{vessel.barcode}</button>
             <span className="text-muted-foreground">Cultivar</span>
-            <span>{vessel.cultivar?.name || "—"}</span>
+            <span>{vessel.cultivar ? <Link href={`/cultivars/${vessel.cultivar.id}`} className="text-primary hover:underline">{vessel.cultivar.name}</Link> : "—"}</span>
             <span className="text-muted-foreground">Species</span>
             <span>{vessel.cultivar?.species || "—"}</span>
             <span className="text-muted-foreground">Media Recipe</span>
-            <span>{vessel.mediaRecipe?.name || "—"}</span>
+            <span>{vessel.mediaRecipe ? <Link href={`/media/${vessel.mediaRecipe.id}`} className="text-primary hover:underline">{vessel.mediaRecipe.name}</Link> : "—"}</span>
             <span className="text-muted-foreground">Stage</span>
             <StageBadge stage={vessel.stage} />
             <span className="text-muted-foreground">Explant Count</span>
@@ -645,14 +640,39 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         </CardContent>
       </Card>
 
+      {/* SOP for Current Stage */}
+      {protocols.length > 0 && (
+        <details id="protocol" className="scroll-mt-20 rounded-xl border bg-card">
+          <summary className="cursor-pointer p-4 font-medium text-sm">Protocol · {protocols[0].name} <span className="text-muted-foreground">v{protocols[0].version}</span></summary>
+          <div className="space-y-3 px-4 pb-4">
+            {protocols[0].safetyNotes && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-2 text-sm text-amber-700 dark:text-amber-300">
+                {protocols[0].safetyNotes}
+              </div>
+            )}
+            {protocols[0].steps.map((step: { order: number; instruction: string; duration?: string; critical?: boolean }, i: number) => (
+              <div key={i} className="flex gap-3 items-start">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${step.critical ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>
+                  {step.order}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm">{step.instruction}</p>
+                  {step.duration && <p className="text-xs text-muted-foreground">{step.duration}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
       {/* Phase 1 multi-vertical: designations */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
+          <CardTitle className="text-base flex flex-wrap items-center justify-between gap-3">
             <span>Designations</span>
             {(vessel.isMotherPlant || vessel.isOffType) && (
               <span className="flex gap-1">
-                {vessel.isMotherPlant && <span className="text-xs px-2 py-0.5 rounded bg-violet-500/10 text-violet-600 font-medium">Mother plant</span>}
+                {vessel.isMotherPlant && <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-medium">Mother plant</span>}
                 {vessel.isOffType && <span className="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 font-medium">Off-type</span>}
               </span>
             )}
@@ -660,7 +680,7 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <div className="font-medium">Mother plant</div>
               <p className="text-xs text-muted-foreground">Designate this vessel as a source for downstream cuttings or subcultures. Used by cannabis, breeding, and rare-collector workflows.</p>
               {vessel.motherPlantNotes && (
@@ -696,7 +716,7 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
           <Separator />
 
           <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <div className="font-medium">Off-type / somaclonal variation</div>
               <p className="text-xs text-muted-foreground">Flag if this vessel shows phenotypic divergence from the expected variety. Healthy plant, but genetically off. Used by banana and any clonal-propagation lab tracking rogues.</p>
               {vessel.offTypeNotes && (
@@ -738,7 +758,7 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
             <CardTitle className="text-base">Media Batch</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+            <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm [&>*]:min-w-0 [&>*]:break-words">
               <span className="text-muted-foreground">Batch Number</span>
               <span className="font-mono font-medium">{vessel.mediaBatch.batchNumber}</span>
               <span className="text-muted-foreground">Recipe</span>
@@ -779,9 +799,9 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
       </Card>
 
       {/* Lineage */}
-      <Card>
+      <Card id="lineage" className="scroll-mt-20">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-base">Lineage</CardTitle>
             <Link href={`/vessels/${vessel.id}/lineage`}>
               <Button variant="outline" size="sm">View Full Tree</Button>
@@ -802,12 +822,12 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
           {vessel.childVessels && vessel.childVessels.length > 0 && (
             <div>
               <p className="text-sm text-muted-foreground mb-2">Child Vessels ({vessel.childVessels.length})</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 [&>*]:min-w-0 [&>*]:break-words">
                 {vessel.childVessels.map((child) => (
                   <Link
                     key={child.id}
                     href={`/vessels/${child.id}`}
-                    className="flex items-center justify-between p-2 rounded-md border hover:bg-accent/50 transition-colors"
+                    className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-md border hover:bg-accent/50 transition-colors"
                   >
                     <span className="font-mono text-sm">{child.barcode}</span>
                     <StatusBadge status={child.status} />
@@ -820,7 +840,7 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
       </Card>
 
       {/* Activity log */}
-      <Card>
+      <Card id="history" className="scroll-mt-20">
         <CardHeader>
           <CardTitle className="text-base">Activity History</CardTitle>
         </CardHeader>
@@ -832,7 +852,7 @@ export default function VesselDetailPage({ params }: { params: Promise<{ id: str
               {vessel.activities.map((a, i) => (
                 <div key={a.id}>
                   {i > 0 && <Separator className="mb-3" />}
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium capitalize">{a.type.replace(/_/g, " ")}</p>
                       {a.notes && <p className="text-xs text-muted-foreground">{a.notes}</p>}

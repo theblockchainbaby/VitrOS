@@ -16,6 +16,8 @@ function makeRequest(body: unknown, method = "POST"): NextRequest {
 describe("Vessel Creation - Duplicate Prevention", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.vessel.findFirst).mockReset();
+    vi.mocked(prisma.vessel.findMany).mockReset().mockResolvedValue([]);
   });
 
   it("should reject duplicate barcodes", async () => {
@@ -41,7 +43,7 @@ describe("Vessel Creation - Duplicate Prevention", () => {
 
     // Assert
     expect(res.status).toBe(409);
-    expect(data.error).toContain("already exists");
+    expect(data.error).toContain("in use by an active vessel");
   });
 
   it("should create vessel when barcode is unique", async () => {
@@ -77,6 +79,8 @@ describe("Vessel Creation - Duplicate Prevention", () => {
 describe("Vessel Stage Advancement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.vessel.findFirst).mockReset();
+    vi.mocked(prisma.vessel.findMany).mockReset().mockResolvedValue([]);
   });
 
   it("should reject advancing a disposed vessel", async () => {
@@ -156,6 +160,8 @@ describe("Vessel Stage Advancement", () => {
 describe("Vessel Health Check", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.vessel.findFirst).mockReset();
+    vi.mocked(prisma.vessel.findMany).mockReset().mockResolvedValue([]);
   });
 
   it("should reject health check on disposed vessel", async () => {
@@ -223,6 +229,8 @@ describe("Vessel Health Check", () => {
 describe("Vessel Move", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.vessel.findFirst).mockReset();
+    vi.mocked(prisma.vessel.findMany).mockReset().mockResolvedValue([]);
   });
 
   it("should reject moving a disposed vessel", async () => {
@@ -252,6 +260,8 @@ describe("Vessel Move", () => {
 describe("Multiply Vessel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.vessel.findFirst).mockReset();
+    vi.mocked(prisma.vessel.findMany).mockReset().mockResolvedValue([]);
   });
 
   it("should reject multiplying an already multiplied vessel", async () => {
@@ -320,6 +330,8 @@ describe("Multiply Vessel", () => {
 describe("Undo Last Action", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.vessel.findFirst).mockReset();
+    vi.mocked(prisma.vessel.findMany).mockReset().mockResolvedValue([]);
   });
 
   it("should reject undo when no reversible actions exist", async () => {
@@ -373,6 +385,8 @@ describe("Undo Last Action", () => {
 describe("CSV Import Validation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.vessel.findFirst).mockReset();
+    vi.mocked(prisma.vessel.findMany).mockReset().mockResolvedValue([]);
   });
 
   it("should reject CSV without barcode column", async () => {
@@ -428,8 +442,8 @@ describe("CSV Import Validation", () => {
     expect(data.error).toContain("TC001");
   });
 
-  it("should reject more than 500 vessels", async () => {
-    const rows = Array.from({ length: 501 }, (_, i) => `TC${String(i).padStart(4, "0")},initiation`);
+  it("should reject more than 2000 vessels", async () => {
+    const rows = Array.from({ length: 2001 }, (_, i) => `TC${String(i).padStart(4, "0")},initiation`);
     const csv = `barcode,stage\n${rows.join("\n")}`;
 
     const { POST } = await import("@/app/api/vessels/import/route");
@@ -443,6 +457,6 @@ describe("CSV Import Validation", () => {
     const data = await res.json();
 
     expect(res.status).toBe(400);
-    expect(data.error).toContain("500");
+    expect(data.error).toContain("2,000");
   });
 });

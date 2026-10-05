@@ -1,21 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import Image from "next/image";
+import { AuthShell } from "@/components/auth-shell";
+import { PasswordInput } from "@/components/password-input";
 
 type Tab = "email" | "pin";
 
 export default function LoginPage() {
+  return <Suspense fallback={<AuthShell title="Sign in to your lab" description="Loading sign-in…"><p role="status">Loading…</p></AuthShell>}><LoginForm /></Suspense>;
+}
+
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const demo = searchParams.get("demo") === "true";
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("email");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(demo ? "demo@vitros.app" : "");
+  const [password, setPassword] = useState(demo ? "demo1234" : "");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,19 +32,22 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (result?.error) {
-      setError("Invalid email or password");
-    } else {
-      router.push("/");
-      router.refresh();
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+      if (result?.error) {
+        setError("Invalid email or password");
+      } else {
+        router.push("/");
+        router.refresh();
+      }
+    } catch {
+      setError("We couldn’t reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,35 +56,33 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await signIn("pin", {
-      pin,
-      organizationId: "default",
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (result?.error) {
-      setError("Invalid PIN");
-    } else {
-      router.push("/");
-      router.refresh();
+    try {
+      const result = await signIn("pin", {
+        pin,
+        organizationId: "default",
+        redirect: false,
+      });
+      if (result?.error) {
+        setError("Invalid PIN");
+      } else {
+        router.push("/");
+        router.refresh();
+      }
+    } catch {
+      setError("We couldn’t reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md mx-4">
-      <div className="rounded-xl border bg-card p-8 shadow-sm">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Image src="/logo.png" alt="VitrOS" width={500} height={488} className="h-14 w-auto" />
-        </div>
-        <p className="text-center text-muted-foreground mb-6">
-          Enterprise Tissue Culture Management
-        </p>
+    <AuthShell title="Sign in to your lab" description={demo ? "Demo credentials are filled in. Sign in to explore the shared demonstration workspace." : "Pick up where your team left off."}>
 
         {/* Tabs */}
         <div className="flex rounded-lg bg-muted p-1 mb-6">
           <button
+            disabled={loading}
+            aria-pressed={tab === "email"}
             onClick={() => { setTab("email"); setError(""); }}
             className={`flex-1 text-sm font-medium py-2 rounded-md transition-colors ${
               tab === "email"
@@ -85,6 +93,8 @@ export default function LoginPage() {
             Email & Password
           </button>
           <button
+            disabled={loading}
+            aria-pressed={tab === "pin"}
             onClick={() => { setTab("pin"); setError(""); }}
             className={`flex-1 text-sm font-medium py-2 rounded-md transition-colors ${
               tab === "pin"
@@ -97,13 +107,13 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 mb-4">
+          <div role="alert" className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 mb-4">
             {error}
           </div>
         )}
 
         {tab === "email" ? (
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          <form aria-busy={loading} onSubmit={handleEmailLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -127,9 +137,9 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
+
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
@@ -142,7 +152,7 @@ export default function LoginPage() {
             </Button>
           </form>
         ) : (
-          <form onSubmit={handlePinLogin} className="space-y-4">
+          <form aria-busy={loading} onSubmit={handlePinLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="pin">PIN</Label>
               <Input
@@ -173,7 +183,6 @@ export default function LoginPage() {
             Create one free
           </Link>
         </p>
-      </div>
-    </div>
+    </AuthShell>
   );
 }
