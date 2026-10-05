@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, operationalEmailEnabled } from "@/lib/email";
 
 // Weekly production summary sent every Monday at 8 AM
 // Configure in vercel.json: { "path": "/api/cron/weekly-report", "schedule": "0 8 * * 1" }
@@ -74,6 +74,14 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
+    // Operational email gate: reports are system-initiated mail to every org
+    // with an active manager, dormant ones included. Compute nothing further
+    // and send nothing until operational email is explicitly enabled.
+    if (!operationalEmailEnabled()) {
+      results.push({ org: org.name, sent: false });
+      continue;
+    }
+
     const stageRows = vesselsByStage
       .sort((a, b) => {
         const order = ["initiation", "multiplication", "rooting", "acclimation", "hardening"];
@@ -85,7 +93,7 @@ export async function GET(req: NextRequest) {
       )
       .join("");
 
-    await sendEmail({
+    const sendResult = await sendEmail({
       to: managers.map((m) => m.email),
       subject: `[VitrOS] Weekly Report — ${org.name}`,
       html: `
@@ -122,8 +130,13 @@ export async function GET(req: NextRequest) {
       `,
     });
 
-    results.push({ org: org.name, sent: true });
+    // sendEmail returns null on failure; do not report a failed send as sent
+    results.push({ org: org.name, sent: !!sendResult });
   }
 
-  return NextResponse.json({ success: true, results });
+  return NextResponse.json({
+    success: true,
+    operationalEmails: operationalEmailEnabled() ? "enabled" : "disabled",
+    results,
+  });
 }

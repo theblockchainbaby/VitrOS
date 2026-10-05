@@ -38,6 +38,14 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
 
 const APP_URL = process.env.AUTH_URL || "https://vitroslabs.com";
 
+// Operational (system-initiated) email: daily alerts, weekly reports.
+// Disabled unless OPERATIONAL_EMAILS_ENABLED="true", so restoring the email
+// key cannot start unsolicited mail to dormant orgs. User-initiated
+// transactional mail (welcome, password reset) is never gated by this.
+export function operationalEmailEnabled(): boolean {
+  return process.env.OPERATIONAL_EMAILS_ENABLED === "true";
+}
+
 export async function sendWelcomeEmail(params: {
   to: string;
   name: string;
