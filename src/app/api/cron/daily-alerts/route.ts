@@ -15,12 +15,13 @@ import {
 // its recent row (counts, severity) instead of piling up duplicates, and a
 // severity escalation marks the row unread and un-dismissed again.
 //
-// Email is throttled separately, keyed on emailedAt (last SUCCESSFUL
-// submission), never on row creation: failed sends and runs while the
-// operational gate is off do not consume the window, so the first real
-// delivery after an outage is never suppressed. Escalation to critical
-// bypasses the window. All senders used here pass through
-// sendOperationalEmail, which enforces OPERATIONAL_EMAILS_ENABLED.
+// Email is throttled separately, keyed on the last SUCCESSFUL submission
+// (emailedAt + emailedSeverity), never on row creation or current row
+// severity: failed sends and gated runs do not consume the window, and an
+// escalation to critical keeps retrying until a critical email actually goes
+// out, even when an earlier failed attempt already marked the in-app row
+// critical. All senders used here pass through sendOperationalEmail, which
+// enforces OPERATIONAL_EMAILS_ENABLED.
 const EMAIL_WINDOW_DAYS = {
   subculture_due: 7,
   low_inventory: 3,
@@ -67,7 +68,7 @@ export async function GET(req: NextRequest) {
       message: string;
       entityType?: string;
       entityId?: string;
-    }): Promise<{ alertId: string; escalated: boolean }> => {
+    }): Promise<{ alertId: string }> => {
       const existing = await prisma.alert.findFirst({
         where: {
           organizationId: org.id,
@@ -90,7 +91,7 @@ export async function GET(req: NextRequest) {
             organizationId: org.id,
           },
         });
-        return { alertId: created.id, escalated: false };
+        return { alertId: created.id };
       }
 
       const escalated = existing.severity !== "critical" && opts.severity === "critical";
@@ -105,26 +106,39 @@ export async function GET(req: NextRequest) {
           ...(escalated ? { isRead: false, isDismissed: false } : {}),
         },
       });
-      return { alertId: existing.id, escalated };
+      return { alertId: existing.id };
     };
 
-    // Email throttle: was any alert of this type (and entity) successfully
-    // emailed inside the window? Checked independently of row freshness.
-    const recentlyEmailed = async (type: AlertType, entityId?: string) => {
-      const recent = await prisma.alert.findFirst({
+    // Email eligibility, judged ONLY against the ledger of successful sends:
+    // email when nothing of this type (and entity) was successfully emailed
+    // inside the window, or when the condition is critical and the last
+    // successful email went out at a milder severity. The in-app row's
+    // current severity is deliberately not consulted; a failed escalation
+    // send must stay retryable.
+    const needsEmail = async (
+      type: AlertType,
+      severity: "warning" | "critical",
+      entityId?: string
+    ) => {
+      const lastSent = await prisma.alert.findFirst({
         where: {
           organizationId: org.id,
           type,
           ...(entityId ? { entityId } : {}),
           emailedAt: { gte: windowStart(type) },
         },
-        select: { id: true },
+        orderBy: { emailedAt: "desc" },
+        select: { emailedSeverity: true },
       });
-      return !!recent;
+      if (!lastSent) return true;
+      return severity === "critical" && lastSent.emailedSeverity !== "critical";
     };
 
-    const markEmailed = (alertId: string) =>
-      prisma.alert.update({ where: { id: alertId }, data: { emailedAt: now } });
+    const markEmailed = (alertId: string, severity: "warning" | "critical") =>
+      prisma.alert.update({
+        where: { id: alertId },
+        data: { emailedAt: now, emailedSeverity: severity },
+      });
 
     const getManagers = (roles: string[]) =>
       prisma.user.findMany({
@@ -155,14 +169,15 @@ export async function GET(req: NextRequest) {
 
     let subculture: EmailStatus = "none";
     if (overdueCount > 0 || dueTodayCount > 0) {
-      const { alertId, escalated } = await upsertAlert({
+      const severity = overdueCount > 10 ? "critical" : "warning";
+      const { alertId } = await upsertAlert({
         type: "subculture_due",
-        severity: overdueCount > 10 ? "critical" : "warning",
+        severity,
         title: `${overdueCount} overdue, ${dueTodayCount} due today`,
         message: `${overdueCount} vessel${overdueCount !== 1 ? "s" : ""} overdue for subculture and ${dueTodayCount} due today. Review and process these vessels to stay on schedule.`,
       });
 
-      if (!escalated && (await recentlyEmailed("subculture_due"))) {
+      if (!(await needsEmail("subculture_due", severity))) {
         subculture = "cooldown";
       } else {
         const managers = await getManagers(["admin", "manager", "lead_tech"]);
@@ -175,7 +190,7 @@ export async function GET(req: NextRequest) {
             recipientEmails: managers.map((m) => m.email),
           });
           subculture = sendResult;
-          if (sendResult === "sent") await markEmailed(alertId);
+          if (sendResult === "sent") await markEmailed(alertId, severity);
         }
       }
     }
@@ -194,18 +209,23 @@ export async function GET(req: NextRequest) {
     );
 
     if (alertItems.length > 0) {
-      const emailable: { item: (typeof alertItems)[number]; alertId: string }[] = [];
+      const emailable: {
+        item: (typeof alertItems)[number];
+        alertId: string;
+        severity: "warning" | "critical";
+      }[] = [];
       for (const item of alertItems) {
-        const { alertId, escalated } = await upsertAlert({
+        const severity = item.currentStock === 0 ? "critical" : "warning";
+        const { alertId } = await upsertAlert({
           type: "low_inventory",
-          severity: item.currentStock === 0 ? "critical" : "warning",
+          severity,
           title: `Low stock: ${item.name}`,
           message: `${item.name} is at ${item.currentStock} ${item.unit} (reorder level: ${item.reorderLevel} ${item.unit}). Restock soon to avoid disruptions.`,
           entityType: "inventory_item",
           entityId: item.id,
         });
-        if (escalated || !(await recentlyEmailed("low_inventory", item.id))) {
-          emailable.push({ item, alertId });
+        if (await needsEmail("low_inventory", severity, item.id)) {
+          emailable.push({ item, alertId, severity });
         }
       }
 
@@ -218,7 +238,7 @@ export async function GET(req: NextRequest) {
         } else {
           let sawFailure = false;
           let sawDisabled = false;
-          for (const { item, alertId } of emailable) {
+          for (const { item, alertId, severity } of emailable) {
             const sendResult = await sendLowInventoryAlert({
               itemName: item.name,
               currentStock: item.currentStock,
@@ -226,7 +246,7 @@ export async function GET(req: NextRequest) {
               unit: item.unit,
               recipientEmails: managers.map((m) => m.email),
             });
-            if (sendResult === "sent") await markEmailed(alertId);
+            if (sendResult === "sent") await markEmailed(alertId, severity);
             else if (sendResult === "disabled") sawDisabled = true;
             else sawFailure = true;
           }
@@ -260,14 +280,14 @@ export async function GET(req: NextRequest) {
     const isSpike = currentWeekCount >= 3 && (previousWeekCount === 0 || currentWeekCount >= previousWeekCount * 2);
 
     if (isSpike) {
-      const { alertId, escalated } = await upsertAlert({
+      const { alertId } = await upsertAlert({
         type: "contamination_spike",
         severity: "critical",
         title: `Contamination spike: ${currentWeekCount} cases this week`,
         message: `${currentWeekCount} contamination cases detected this week vs ${previousWeekCount} last week. Investigate environmental conditions, media batches, and procedural compliance immediately.`,
       });
 
-      if (!escalated && (await recentlyEmailed("contamination_spike"))) {
+      if (!(await needsEmail("contamination_spike", "critical"))) {
         contaminationSpike = "cooldown";
       } else {
         const managers = await getManagers(["admin", "manager", "lead_tech"]);
@@ -281,7 +301,7 @@ export async function GET(req: NextRequest) {
             recipientEmails: managers.map((m) => m.email),
           });
           contaminationSpike = sendResult;
-          if (sendResult === "sent") await markEmailed(alertId);
+          if (sendResult === "sent") await markEmailed(alertId, "critical");
         }
       }
     }

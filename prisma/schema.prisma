@@ -425,10 +425,12 @@ model Alert {
   entityId       String?
   isRead         Boolean      @default(false)
   isDismissed    Boolean      @default(false)
-  // When this alert was last successfully emailed. Email throttling keys off
-  // this, never off row creation, so failed or gated sends don't consume the
-  // send window.
-  emailedAt      DateTime?
+  // Last successful email for this alert: when it went out and at what
+  // severity. Email throttling keys off these, never off row creation or row
+  // severity, so failed or gated sends don't consume the send window and a
+  // failed critical escalation keeps retrying until a critical email lands.
+  emailedAt       DateTime?
+  emailedSeverity String?
   organizationId String
   userId         String?
   createdAt      DateTime     @default(now())
