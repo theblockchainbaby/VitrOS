@@ -10,7 +10,7 @@ const { setup,origin }=require('./design-fixtures.cjs');
   const response=await page.goto(origin+route,{waitUntil:'networkidle'});const publicPage=['/','/features','/pricing','/demo','/why-vitros','/blog'].includes(route);
   const metadata=await page.evaluate(()=>({title:document.title,canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content,og:document.querySelector('meta[property="og:image"]')?.content,h1:[...document.querySelectorAll('h1')].map(e=>e.textContent),schema:[...document.querySelectorAll('script[type="application/ld+json"]')].map(e=>JSON.parse(e.textContent))}));
   if(publicPage){assert.equal(new URL(metadata.canonical).href,new URL(route,'https://vitroslabs.com').href);assert.equal(metadata.robots,'index, follow');assert(metadata.og?.includes('/images/product/tissue-culture-dashboard.png'));assert.equal(metadata.h1.length,1)}else{assert(metadata.robots?.includes('noindex'));assert.equal(metadata.canonical,undefined)}
-  if(route==='/'){assert((await response.text()).includes('Plant tissue culture software for a connected lab.'));assert.equal(metadata.schema.length,1);assert(!JSON.stringify(metadata.schema).includes('AggregateOffer'));}
+  if(route==='/'){const html=await response.text();assert(html.includes('Every culture.'));assert(html.includes('Connected.'));assert(html.includes('Plant tissue culture software'));assert.equal(metadata.h1[0],'Every culture. Connected.');assert.equal(metadata.schema.length,1);assert(!JSON.stringify(metadata.schema).includes('AggregateOffer'));}
   else assert.equal(metadata.schema.length,0);
   checks.push({route,status:response.status(),...metadata});
  }

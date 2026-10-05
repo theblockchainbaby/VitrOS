@@ -1,0 +1,126 @@
+.hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  scroll-margin-top: 92px;
+}
+
+.introduction {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  align-items: end;
+  gap: 48px;
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.eyebrow > span {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+}
+
+.hero .headline {
+  font-size: clamp(3.25rem, 6.4vw, 5rem);
+  font-weight: 550;
+  line-height: .99;
+  letter-spacing: -.055em;
+  text-wrap: initial;
+}
+
+.headline > span { color: var(--primary); }
+
+.summary > p:first-child {
+  max-width: 410px;
+  color: var(--muted-foreground);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.summary .trial { margin-top: 12px; color: var(--muted-foreground); font-size: 12px; line-height: 1.6; }
+
+.connection {
+  display: grid;
+  grid-template-columns: .62fr 1fr;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.vessel { display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+.vesselHeading, .screenHeading, .lineageHeading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.vesselHeading { border-bottom: 1px solid var(--border); }
+.vesselHeading > svg, .screenHeading > svg, .lineageHeading > svg { margin-left: auto; flex-shrink: 0; }
+.number { color: var(--muted-foreground); font-family: var(--font-geist-mono), monospace; font-size: 10px; }
+.vesselPhoto { position: relative; flex: 1; min-height: 300px; background: #d5d8cd; }
+.vesselImage { object-fit: cover; object-position: 42% 50%; }
+.photoCaption { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; padding: 8px 18px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 11px; }
+.photoCaption > span:first-child { font-family: var(--font-geist-mono), monospace; }
+.recordIdentity { display: none; }
+
+.records { display: flex; min-width: 0; flex-direction: column; }
+.screenLink { display: block; }
+.screenLink:focus-visible { position: relative; z-index: 1; outline: 3px solid var(--ring); outline-offset: -3px; }
+.screenLink:hover .screenHeading, .screenLink:hover .lineageHeading { color: var(--primary); }
+.screenHeading, .lineageHeading { border-bottom: 1px solid var(--border); }
+.lineageHeading { border-top: 1px solid var(--border); }
+.recordViewport, .lineageViewport { position: relative; overflow: hidden; background: #f6f7f4; }
+
+/* Viewports show the original screenshot pixels at useful scale. Complete
+   screenshots remain available through each image's link. */
+.recordViewport { aspect-ratio: 2075 / 725; }
+.recordImage { position: absolute; width: 138.795%; max-width: none; height: auto; left: -31.566%; top: -22.069%; }
+.lineageViewport { aspect-ratio: 1300 / 200; }
+.lineageImage { position: absolute; width: 221.538%; max-width: none; height: auto; left: -46.923%; top: -262.5%; }
+.screenCaption { margin-top: auto; padding: 9px 18px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 11px; line-height: 1.5; }
+
+@media (max-width: 1023px) {
+  .introduction { grid-template-columns: 1.1fr 1fr; gap: 28px; }
+  .summary > p:first-child { font-size: 15px; }
+  .hero .headline { font-size: clamp(3.15rem, 6.4vw, 5rem); }
+  .vesselPhoto { min-height: 260px; }
+  .vesselHeading, .screenHeading, .lineageHeading { gap: 8px; padding: 11px 12px; font-size: 11px; }
+}
+
+@media (max-width: 767px) {
+  .hero { padding: 28px 16px 32px; }
+  .introduction { grid-template-columns: 1fr; gap: 22px; margin-bottom: 26px; }
+  .eyebrow { margin-bottom: 15px; font-size: 10px; }
+  .hero .headline { font-size: clamp(3rem, 11.8vw, 4.5rem); }
+  .summary > p:first-child { max-width: 520px; font-size: 16px; line-height: 1.6; }
+  .actions { margin-top: 20px; }
+  .connection { grid-template-columns: 1fr; }
+  .vessel { border-right: 0; border-bottom: 1px solid var(--border); }
+  .vesselPhoto { flex: none; min-height: 0; aspect-ratio: 1.4; }
+  .vesselHeading, .screenHeading, .lineageHeading { padding: 12px 14px; font-size: 12px; }
+  .photoCaption, .screenCaption { padding-left: 14px; padding-right: 14px; }
+  .recordIdentity { display: block; margin-top: 4px; color: var(--primary); font-family: var(--font-geist-mono), monospace; font-size: 11px; }
+  /* On narrow screens, focus on the parent and selected vessel. */
+  .lineageViewport { aspect-ratio: 875 / 200; }
+  .lineageImage { width: 329.143%; left: -118.286%; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .screenHeading, .lineageHeading { transition: color .15s ease; }
+}

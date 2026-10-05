@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ArrowRight, Check, FlaskConical, GitBranch, ScanBarcode, ShieldCheck, CalendarClock, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PublicPage, ProductScreenshot } from "@/components/public-site";
+import { ConnectedCultureHero } from "@/components/connected-culture-hero";
 
 const capabilities = [
   { icon: FlaskConical, title: "A record for every vessel", text: "Track cultivar, stage, explants, health, and location from initiation through hardening." },
@@ -15,24 +16,7 @@ const capabilities = [
 
 export function LandingPage() {
   return <PublicPage>
-    <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[1.05fr_.95fr] lg:gap-16">
-      <div>
-        <p className="mb-5 flex items-center gap-2 text-sm font-medium text-primary"><FlaskConical className="size-4" /> Built for tissue culture</p>
-        <h1 className="max-w-2xl text-[clamp(2.5rem,5vw,4.25rem)]">Plant tissue culture software for a connected lab.</h1>
-        <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">Track plant tissue culture vessels, follow lineage, and plan micropropagation runs. VitrOS brings your lab’s daily work into one clear workspace.</p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Button asChild size="lg"><Link href="/signup">Start free <ArrowRight className="size-4" /></Link></Button>
-          <Button asChild variant="outline" size="lg"><Link href="/demo">Explore the demo</Link></Button>
-        </div>
-        <p className="mt-4 text-sm text-muted-foreground">30-day free trial. No credit card to create your workspace.</p>
-      </div>
-      <figure className="min-w-0">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted lg:aspect-[4/4.5]">
-          <Image src="/images/homepage/tc-verticals.jpg" alt="Barcode-labeled culture vessels arranged on shelves in a tissue culture production room" fill priority sizes="(max-width: 1023px) 100vw, 520px" className="object-cover" />
-        </div>
-        <figcaption className="mt-3 text-xs text-muted-foreground">Designed around the cultures, people, and routines of a working lab.</figcaption>
-      </figure>
-    </section>
+    <ConnectedCultureHero />
 
     <section id="features" className="border-y bg-muted/30 px-4 py-14 sm:px-6 md:py-20">
       <div className="mx-auto max-w-6xl">
@@ -68,24 +52,6 @@ export function LandingPage() {
           <Link href="#physical-record" className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-primary">Follow a culture record <ArrowRight className="size-4" /></Link>
         </div>
       </div>
-    </section>
-
-    <section id="physical-record" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-16 sm:px-6 md:py-24">
-      <div className="mb-9 max-w-2xl">
-        <p className="mb-4 text-xs font-medium tracking-wide text-primary">From the vessel to its history</p>
-        <h2 className="text-3xl sm:text-4xl">A label on the vessel.<br />A record your team can follow.</h2>
-        <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">The identifier connects what’s growing on the shelf to its cultivar, stage, location, and next step in VitrOS.</p>
-      </div>
-      <div className="grid items-start gap-7 md:grid-cols-[.83fr_1.17fr]">
-        <figure>
-          <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted"><Image src="/images/homepage/labeled-culture-vessel-ai.png" alt="AI photo illustration of a Monstera deliciosa tissue culture vessel labeled TC-2026-0042, matching the adjacent VitrOS record" fill sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) 42vw, 466px" className="object-cover" /></div>
-          <figcaption className="mt-3 text-xs text-muted-foreground">AI photo illustration · vessel TC-2026-0042</figcaption>
-        </figure>
-        <ProductScreenshot src="/images/product/vessel-record.png" alt="VitrOS vessel record for TC-2026-0042 showing Monstera deliciosa, multiplication stage, health, location, and next subculture date" caption="Vessel record · TC-2026-0042" sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) 58vw, 658px" />
-      </div>
-      <ol className="mt-9 grid gap-7 border-t pt-7 sm:grid-cols-3 sm:gap-10">
-        {[["Identify the culture", "A unique vessel record keeps each culture connected to its details."], ["Read the full context", "Review its stage, health, media, and location together."], ["Carry the history forward", "Follow its lineage and leave the next technician a clear record."]].map(([title, text], i) => <li key={title}><span className="mb-3 block font-mono text-xs text-primary">0{i + 1}</span><h3 className="text-sm font-semibold">{title}</h3><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p></li>)}
-      </ol>
     </section>
 
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
