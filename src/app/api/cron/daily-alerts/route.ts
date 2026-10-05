@@ -5,6 +5,7 @@ import {
   sendLowInventoryAlert,
   sendContaminationSpikeAlert,
   operationalEmailEnabled,
+  type OperationalSendResult,
 } from "@/lib/email";
 
 // This endpoint is called by Vercel Cron daily
@@ -12,12 +13,14 @@ import {
 
 // In-app alert rows stay current on every run: a standing condition refreshes
 // its recent row (counts, severity) instead of piling up duplicates, and a
-// severity escalation marks the row unread again. Email has its own throttle
-// so the same condition does not re-mail managers every day: one email per
-// alert type (per item, for inventory) per window, except when severity
-// escalates to critical. On top of that, ALL operational email sits behind
-// OPERATIONAL_EMAILS_ENABLED, so in-app alerts keep working while email to
-// organizations stays off until explicitly enabled.
+// severity escalation marks the row unread and un-dismissed again.
+//
+// Email is throttled separately, keyed on emailedAt (last SUCCESSFUL
+// submission), never on row creation: failed sends and runs while the
+// operational gate is off do not consume the window, so the first real
+// delivery after an outage is never suppressed. Escalation to critical
+// bypasses the window. All senders used here pass through
+// sendOperationalEmail, which enforces OPERATIONAL_EMAILS_ENABLED.
 const EMAIL_WINDOW_DAYS = {
   subculture_due: 7,
   low_inventory: 3,
@@ -35,8 +38,6 @@ export async function GET(req: NextRequest) {
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const emailsEnabled = operationalEmailEnabled();
 
   const orgs = await prisma.organization.findMany({
     select: { id: true, name: true },
@@ -59,8 +60,6 @@ export async function GET(req: NextRequest) {
     };
 
     // Refresh the recent in-app alert row when one exists, create otherwise.
-    // Returns whether this run is allowed to email for the condition: yes for
-    // a new row in the window, yes on escalation to critical, no otherwise.
     const upsertAlert = async (opts: {
       type: AlertType;
       severity: "warning" | "critical";
@@ -68,7 +67,7 @@ export async function GET(req: NextRequest) {
       message: string;
       entityType?: string;
       entityId?: string;
-    }): Promise<{ shouldEmail: boolean }> => {
+    }): Promise<{ alertId: string; escalated: boolean }> => {
       const existing = await prisma.alert.findFirst({
         where: {
           organizationId: org.id,
@@ -80,7 +79,7 @@ export async function GET(req: NextRequest) {
       });
 
       if (!existing) {
-        await prisma.alert.create({
+        const created = await prisma.alert.create({
           data: {
             type: opts.type,
             severity: opts.severity,
@@ -91,7 +90,7 @@ export async function GET(req: NextRequest) {
             organizationId: org.id,
           },
         });
-        return { shouldEmail: true };
+        return { alertId: created.id, escalated: false };
       }
 
       const escalated = existing.severity !== "critical" && opts.severity === "critical";
@@ -101,12 +100,31 @@ export async function GET(req: NextRequest) {
           severity: opts.severity,
           title: opts.title,
           message: opts.message,
-          // An escalation deserves fresh attention in the app too
-          ...(escalated ? { isRead: false } : {}),
+          // An escalation deserves fresh attention: resurface it even if the
+          // earlier, milder alert was read or dismissed.
+          ...(escalated ? { isRead: false, isDismissed: false } : {}),
         },
       });
-      return { shouldEmail: escalated };
+      return { alertId: existing.id, escalated };
     };
+
+    // Email throttle: was any alert of this type (and entity) successfully
+    // emailed inside the window? Checked independently of row freshness.
+    const recentlyEmailed = async (type: AlertType, entityId?: string) => {
+      const recent = await prisma.alert.findFirst({
+        where: {
+          organizationId: org.id,
+          type,
+          ...(entityId ? { entityId } : {}),
+          emailedAt: { gte: windowStart(type) },
+        },
+        select: { id: true },
+      });
+      return !!recent;
+    };
+
+    const markEmailed = (alertId: string) =>
+      prisma.alert.update({ where: { id: alertId }, data: { emailedAt: now } });
 
     const getManagers = (roles: string[]) =>
       prisma.user.findMany({
@@ -137,33 +155,32 @@ export async function GET(req: NextRequest) {
 
     let subculture: EmailStatus = "none";
     if (overdueCount > 0 || dueTodayCount > 0) {
-      const { shouldEmail } = await upsertAlert({
+      const { alertId, escalated } = await upsertAlert({
         type: "subculture_due",
         severity: overdueCount > 10 ? "critical" : "warning",
         title: `${overdueCount} overdue, ${dueTodayCount} due today`,
         message: `${overdueCount} vessel${overdueCount !== 1 ? "s" : ""} overdue for subculture and ${dueTodayCount} due today. Review and process these vessels to stay on schedule.`,
       });
 
-      if (!shouldEmail) {
+      if (!escalated && (await recentlyEmailed("subculture_due"))) {
         subculture = "cooldown";
-      } else if (!emailsEnabled) {
-        subculture = "disabled";
       } else {
         const managers = await getManagers(["admin", "manager", "lead_tech"]);
         if (managers.length === 0) {
           subculture = "no_recipients";
         } else {
-          const sent = await sendSubcultureReminderEmail({
+          const sendResult: OperationalSendResult = await sendSubcultureReminderEmail({
             overdueCount,
             dueTodayCount,
             recipientEmails: managers.map((m) => m.email),
           });
-          subculture = sent ? "sent" : "failed";
+          subculture = sendResult;
+          if (sendResult === "sent") await markEmailed(alertId);
         }
       }
     }
 
-    // 2. Low inventory alerts (deduplicated per item, not per org)
+    // 2. Low inventory alerts (deduplicated and throttled per item)
     let inventory: EmailStatus = "none";
     const lowStockItems = await prisma.inventoryItem.findMany({
       where: {
@@ -177,9 +194,9 @@ export async function GET(req: NextRequest) {
     );
 
     if (alertItems.length > 0) {
-      const emailable: typeof alertItems = [];
+      const emailable: { item: (typeof alertItems)[number]; alertId: string }[] = [];
       for (const item of alertItems) {
-        const { shouldEmail } = await upsertAlert({
+        const { alertId, escalated } = await upsertAlert({
           type: "low_inventory",
           severity: item.currentStock === 0 ? "critical" : "warning",
           title: `Low stock: ${item.name}`,
@@ -187,30 +204,33 @@ export async function GET(req: NextRequest) {
           entityType: "inventory_item",
           entityId: item.id,
         });
-        if (shouldEmail) emailable.push(item);
+        if (escalated || !(await recentlyEmailed("low_inventory", item.id))) {
+          emailable.push({ item, alertId });
+        }
       }
 
       if (emailable.length === 0) {
         inventory = "cooldown";
-      } else if (!emailsEnabled) {
-        inventory = "disabled";
       } else {
         const managers = await getManagers(["admin", "manager"]);
         if (managers.length === 0) {
           inventory = "no_recipients";
         } else {
-          let allSent = true;
-          for (const item of emailable) {
-            const sent = await sendLowInventoryAlert({
+          let sawFailure = false;
+          let sawDisabled = false;
+          for (const { item, alertId } of emailable) {
+            const sendResult = await sendLowInventoryAlert({
               itemName: item.name,
               currentStock: item.currentStock,
               reorderLevel: item.reorderLevel!,
               unit: item.unit,
               recipientEmails: managers.map((m) => m.email),
             });
-            if (!sent) allSent = false;
+            if (sendResult === "sent") await markEmailed(alertId);
+            else if (sendResult === "disabled") sawDisabled = true;
+            else sawFailure = true;
           }
-          inventory = allSent ? "sent" : "failed";
+          inventory = sawFailure ? "failed" : sawDisabled ? "disabled" : "sent";
         }
       }
     }
@@ -240,29 +260,28 @@ export async function GET(req: NextRequest) {
     const isSpike = currentWeekCount >= 3 && (previousWeekCount === 0 || currentWeekCount >= previousWeekCount * 2);
 
     if (isSpike) {
-      const { shouldEmail } = await upsertAlert({
+      const { alertId, escalated } = await upsertAlert({
         type: "contamination_spike",
         severity: "critical",
         title: `Contamination spike: ${currentWeekCount} cases this week`,
         message: `${currentWeekCount} contamination cases detected this week vs ${previousWeekCount} last week. Investigate environmental conditions, media batches, and procedural compliance immediately.`,
       });
 
-      if (!shouldEmail) {
+      if (!escalated && (await recentlyEmailed("contamination_spike"))) {
         contaminationSpike = "cooldown";
-      } else if (!emailsEnabled) {
-        contaminationSpike = "disabled";
       } else {
         const managers = await getManagers(["admin", "manager", "lead_tech"]);
         if (managers.length === 0) {
           contaminationSpike = "no_recipients";
         } else {
-          const sent = await sendContaminationSpikeAlert({
+          const sendResult: OperationalSendResult = await sendContaminationSpikeAlert({
             currentWeekCount,
             previousWeekCount,
             orgName: org.name,
             recipientEmails: managers.map((m) => m.email),
           });
-          contaminationSpike = sent ? "sent" : "failed";
+          contaminationSpike = sendResult;
+          if (sendResult === "sent") await markEmailed(alertId);
         }
       }
     }
@@ -272,7 +291,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    operationalEmails: emailsEnabled ? "enabled" : "disabled",
+    operationalEmails: operationalEmailEnabled() ? "enabled" : "disabled",
     results,
   });
 }

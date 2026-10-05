@@ -27,6 +27,13 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
       subject,
       html,
     });
+    // Resend reports rejections as { data: null, error } instead of throwing,
+    // and that object is truthy. Verify explicitly: a send only counts when
+    // the provider returned a message id.
+    if (result.error || !result.data?.id) {
+      console.error("[Email] Send rejected:", result.error ?? "no message id returned");
+      return null;
+    }
     return result;
   } catch (error) {
     console.error("[Email] Failed to send:", error);
@@ -44,6 +51,16 @@ const APP_URL = process.env.AUTH_URL || "https://vitroslabs.com";
 // transactional mail (welcome, password reset) is never gated by this.
 export function operationalEmailEnabled(): boolean {
   return process.env.OPERATIONAL_EMAILS_ENABLED === "true";
+}
+
+export type OperationalSendResult = "sent" | "failed" | "disabled";
+
+// Every system-initiated email must pass through this wrapper so the
+// operational gate cannot be bypassed at a call site. "sent" means the
+// provider returned a message id; anything else did not go out.
+export async function sendOperationalEmail(opts: EmailOptions): Promise<OperationalSendResult> {
+  if (!operationalEmailEnabled()) return "disabled";
+  return (await sendEmail(opts)) ? "sent" : "failed";
 }
 
 export async function sendWelcomeEmail(params: {
@@ -112,7 +129,7 @@ export async function sendContaminationAlert(params: {
   detectedBy: string;
   recipientEmails: string[];
 }) {
-  return sendEmail({
+  return sendOperationalEmail({
     to: params.recipientEmails,
     subject: `[VitrOS Alert] Contamination Detected — ${params.vesselBarcode}`,
     html: `
@@ -140,7 +157,7 @@ export async function sendBatchDisposeAlert(params: {
   reason: string;
   recipientEmails: string[];
 }) {
-  return sendEmail({
+  return sendOperationalEmail({
     to: params.recipientEmails,
     subject: `[VitrOS Alert] ${params.vesselCount} Vessels Disposed`,
     html: `
@@ -166,7 +183,7 @@ export async function sendSubcultureReminderEmail(params: {
   dueTodayCount: number;
   recipientEmails: string[];
 }) {
-  return sendEmail({
+  return sendOperationalEmail({
     to: params.recipientEmails,
     subject: `[VitrOS] ${params.overdueCount} overdue, ${params.dueTodayCount} due today — Subculture Reminder`,
     html: `
@@ -198,7 +215,7 @@ export async function sendContaminationSpikeAlert(params: {
   orgName: string;
   recipientEmails: string[];
 }) {
-  return sendEmail({
+  return sendOperationalEmail({
     to: params.recipientEmails,
     subject: `[VitrOS Alert] Contamination Spike Detected — ${params.orgName}`,
     html: `
@@ -234,7 +251,7 @@ export async function sendLowInventoryAlert(params: {
   unit: string;
   recipientEmails: string[];
 }) {
-  return sendEmail({
+  return sendOperationalEmail({
     to: params.recipientEmails,
     subject: `[VitrOS Alert] Low Stock — ${params.itemName}`,
     html: `

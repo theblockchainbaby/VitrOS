@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { sendEmail, operationalEmailEnabled } from "@/lib/email";
+import { sendOperationalEmail, operationalEmailEnabled } from "@/lib/email";
 
 // Weekly production summary sent every Monday at 8 AM
 // Configure in vercel.json: { "path": "/api/cron/weekly-report", "schedule": "0 8 * * 1" }
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
       )
       .join("");
 
-    const sendResult = await sendEmail({
+    const sendResult = await sendOperationalEmail({
       to: managers.map((m) => m.email),
       subject: `[VitrOS] Weekly Report — ${org.name}`,
       html: `
@@ -130,8 +130,8 @@ export async function GET(req: NextRequest) {
       `,
     });
 
-    // sendEmail returns null on failure; do not report a failed send as sent
-    results.push({ org: org.name, sent: !!sendResult });
+    // Only a provider-confirmed submission counts as sent
+    results.push({ org: org.name, sent: sendResult === "sent" });
   }
 
   return NextResponse.json({
