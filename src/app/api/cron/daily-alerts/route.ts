@@ -21,8 +21,24 @@ export async function GET(req: NextRequest) {
   const results: { org: string; subculture: boolean; inventory: boolean; contaminationSpike: boolean }[] = [];
 
   for (const org of orgs) {
-    // 1. Subculture reminders
     const now = new Date();
+
+    // Cooldown guard: without it the same standing condition re-alerts (and
+    // re-emails every manager) on every daily run until someone clears it,
+    // which for dormant orgs means indefinite daily spam. One alert per type
+    // per window; contamination stays near-daily because it is urgent.
+    const COOLDOWN_DAYS = { subculture_due: 7, low_inventory: 3, contamination_spike: 1 } as const;
+    const inCooldown = async (type: keyof typeof COOLDOWN_DAYS) => {
+      const since = new Date(now);
+      since.setDate(since.getDate() - COOLDOWN_DAYS[type]);
+      const recent = await prisma.alert.findFirst({
+        where: { organizationId: org.id, type, createdAt: { gte: since } },
+        select: { id: true },
+      });
+      return !!recent;
+    };
+
+    // 1. Subculture reminders
     const endOfToday = new Date(now);
     endOfToday.setHours(23, 59, 59, 999);
 
@@ -44,7 +60,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     let subcultureSent = false;
-    if (overdueCount > 0 || dueTodayCount > 0) {
+    if ((overdueCount > 0 || dueTodayCount > 0) && !(await inCooldown("subculture_due"))) {
       // Persist alert to database
       await prisma.alert.create({
         data: {
@@ -88,7 +104,7 @@ export async function GET(req: NextRequest) {
       (item) => item.reorderLevel !== null && item.currentStock <= item.reorderLevel
     );
 
-    if (alertItems.length > 0) {
+    if (alertItems.length > 0 && !(await inCooldown("low_inventory"))) {
       // Persist alerts to database
       for (const item of alertItems) {
         await prisma.alert.create({
@@ -151,7 +167,7 @@ export async function GET(req: NextRequest) {
 
     const isSpike = currentWeekCount >= 3 && (previousWeekCount === 0 || currentWeekCount >= previousWeekCount * 2);
 
-    if (isSpike) {
+    if (isSpike && !(await inCooldown("contamination_spike"))) {
       await prisma.alert.create({
         data: {
           type: "contamination_spike",
