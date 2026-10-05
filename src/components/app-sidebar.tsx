@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { BrandMark } from "@/components/brand-mark";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
@@ -116,9 +116,9 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <div className="px-4 py-5">
+      <div className="px-4 py-5 group-data-[collapsible=icon]:px-2">
         <Link href="/" aria-label="VitrOS home" className="flex items-center gap-2.5 text-xl font-semibold tracking-tight">
-          <Image src="/v-icon.png" alt="" width={32} height={32} className="size-8 object-contain" />
+          <BrandMark className="size-8 shrink-0" />
           <span className="group-data-[collapsible=icon]:hidden">Vitr<span className="text-primary">OS</span></span>
         </Link>
         <span className="mt-2 block truncate text-xs text-[var(--sidebar-muted-foreground)] group-data-[collapsible=icon]:hidden">
