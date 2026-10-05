@@ -17,6 +17,9 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!login|signup|forgot-password|reset-password|pricing|features|demo|why-vitros|blog|studio|api/auth|api/setup|api/webhooks|api/unsubscribe|unsubscribed|_next/static|_next/image|favicon.ico|logo\\.png|logo-text\\.png|email-logo\\.png|icons/|images/|apple-touch-icon\\.png|manifest.json|sitemap.xml|robots.txt).+)",
+    // api/v1 (API-key auth via requireApiKey) and api/cron (CRON_SECRET bearer auth)
+    // are machine routes: they carry their own route-level auth and must not be
+    // redirected to the browser login page.
+    "/((?!login|signup|forgot-password|reset-password|pricing|features|demo|why-vitros|blog|studio|api/auth|api/v1|api/cron|api/setup|api/webhooks|api/unsubscribe|unsubscribed|_next/static|_next/image|favicon.ico|logo\\.png|logo-text\\.png|email-logo\\.png|icons/|images/|apple-touch-icon\\.png|manifest.json|sitemap.xml|robots.txt).+)",
   ],
 };

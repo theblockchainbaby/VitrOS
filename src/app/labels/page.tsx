@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { StageBadge } from "@/components/status-badge";
-import { generateBarcodeSVG, printLabels, generateVesselZPL, printZPLViaBrowserPrint, getZebraPrinters } from "@/lib/label-generator";
+import { generateBarcodeSVG, generateQRCodeDataURL, printLabels, generateVesselZPL, printZPLViaBrowserPrint, getZebraPrinters } from "@/lib/label-generator";
 import type { Vessel } from "@/lib/types";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -35,16 +35,21 @@ export default function LabelsPage() {
     if (!barcodeInput.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/vessels/barcode?barcode=${encodeURIComponent(barcodeInput.trim())}`);
+      const res = await fetch(`/api/vessels/barcode?code=${encodeURIComponent(barcodeInput.trim())}`);
       if (res.ok) {
-        const vessel = await res.json();
-        if (!vessels.some((v) => v.id === vessel.id)) {
-          setVessels((prev) => [...prev, vessel]);
+        const data = await res.json();
+        if (data.found && data.vessel) {
+          const vessel = data.vessel;
+          if (!vessels.some((v) => v.id === vessel.id)) {
+            setVessels((prev) => [...prev, vessel]);
+          }
+          setSelected((prev) => new Set([...prev, vessel.id]));
+          toast.success(`Added ${vessel.barcode}`);
+        } else {
+          toast.error("Vessel not found");
         }
-        setSelected((prev) => new Set([...prev, vessel.id]));
-        toast.success(`Added ${vessel.barcode}`);
       } else {
-        toast.error("Vessel not found");
+        toast.error("Lookup failed. Check your connection and try again.");
       }
     } finally {
       setLoading(false);
@@ -123,7 +128,7 @@ export default function LabelsPage() {
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     const selectedVessels = vessels.filter((v) => selected.has(v.id));
     if (selectedVessels.length === 0) {
       toast.error("Select at least one vessel");
@@ -132,14 +137,31 @@ export default function LabelsPage() {
 
     const style = sizeStyles[labelSize];
 
+    // Pre-generate QR images so QR labels print real, scannable codes
+    const qrByVesselId = new Map<string, string>();
+    if (labelFormat === "qr" || labelFormat === "both") {
+      try {
+        await Promise.all(
+          selectedVessels.map(async (v) => {
+            qrByVesselId.set(v.id, await generateQRCodeDataURL(v.barcode));
+          })
+        );
+      } catch {
+        toast.error("Failed to generate QR codes");
+        return;
+      }
+    }
+
     const labelsHTML = selectedVessels.map((v) => {
       let barcodeHTML = "";
       if (labelFormat === "barcode" || labelFormat === "both") {
         barcodeHTML = `<div class="label-barcode">${generateBarcodeSVG(v.barcode)}</div>`;
       }
       if (labelFormat === "qr" || labelFormat === "both") {
-        // QR uses canvas, so for print we use the barcode text as fallback
-        barcodeHTML += `<div class="label-barcode" style="font-family: monospace; font-size: 14px; font-weight: bold;">${v.barcode}</div>`;
+        const qr = qrByVesselId.get(v.id);
+        if (qr) {
+          barcodeHTML += `<div class="label-barcode"><img src="${qr}" alt="QR ${v.barcode}" style="width: 96px; height: 96px;" /><div style="font-family: monospace; font-size: 10px;">${v.barcode}</div></div>`;
+        }
       }
 
       return `

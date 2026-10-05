@@ -6,9 +6,11 @@ import { sendSubcultureReminderEmail, sendLowInventoryAlert, sendContaminationSp
 // Configure in vercel.json: { "crons": [{ "path": "/api/cron/daily-alerts", "schedule": "0 8 * * *" }] }
 
 export async function GET(req: NextRequest) {
-  // Verify cron secret to prevent unauthorized calls
+  // Verify cron secret to prevent unauthorized calls.
+  // Reject outright when CRON_SECRET is unset: otherwise the comparison target
+  // becomes the literal string "Bearer undefined", which anyone could send.
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

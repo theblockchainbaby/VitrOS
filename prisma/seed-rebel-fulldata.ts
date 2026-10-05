@@ -444,7 +444,9 @@ async function main() {
         autoclaved: true,
         autoclavedAt: prepDate,
         expiresAt: expiresDate,
-        organizationId: orgId,
+        // NOTE: MediaBatch has no organizationId field; it is only tenant-scoped
+        // indirectly through recipe/preparedBy. Direct org scoping (and org-scoped
+        // batchNumber uniqueness) is tracked for the tenant-boundary migration.
       },
     });
   }
