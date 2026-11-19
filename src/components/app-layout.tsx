@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { GlobalScanner } from "@/components/global-scanner";
 import { WelcomeModal } from "@/components/welcome-modal";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -28,6 +29,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div id="workspace-content" tabIndex={-1} className="workspace-content mx-auto w-full min-w-0 max-w-[1440px] flex-1 p-4 outline-none md:p-7 lg:p-8">
           {status === "authenticated" && pathname !== "/onboarding" && <WelcomeModal />}
           {status === "authenticated" && <KeyboardShortcuts />}
+          {status === "authenticated" && <GlobalScanner />}
           {children}
         </div>
       </SidebarInset>

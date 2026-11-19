@@ -15,6 +15,8 @@ import { VESSEL_STATUS_LABELS, HEALTH_STATUS_LABELS, STAGE_LABELS } from "@/lib/
 import { toast } from "sonner";
 import { Clock } from "lucide-react";
 import type { Cultivar, Vessel } from "@/lib/types";
+import { useHardwareScanner } from "@/lib/use-hardware-scanner";
+import { fetchNextBarcodes } from "@/lib/barcode-client";
 
 export default function ScanPage() {
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export default function ScanPage() {
   const [notes, setNotes] = useState("");
 
   const [recentScans, setRecentScans] = useState<string[]>([]);
+  const [numbering, setNumbering] = useState(false);
 
   useEffect(() => {
     fetch("/api/cultivars").then((r) => { if (!r.ok) throw new Error(); return r.json(); }).then(setCultivars).catch(() => toast.error("Cultivars could not be loaded. Reload to try again."));
@@ -97,6 +100,33 @@ export default function ScanPage() {
       setLookingUp(false);
     }
   }, []);
+
+  // A paired hardware scanner works here with no field focused, including
+  // while the camera view is open.
+  useHardwareScanner(handleScan, !scannedBarcode);
+
+  // Arriving from a scan made on another page: /scan?code=RS-00012
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("code")?.trim();
+    if (code) {
+      window.history.replaceState(null, "", "/scan");
+      void handleScan(code);
+    }
+  }, [handleScan]);
+
+  // For a vessel with no printed label: take the lab's next number.
+  const handleNumberForMe = async () => {
+    if (numbering) return;
+    setNumbering(true);
+    try {
+      const [barcode] = await fetchNextBarcodes(1);
+      await handleScan(barcode);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not get a vessel number. Try again.");
+    } finally {
+      setNumbering(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!scannedBarcode || saving) return;
@@ -184,6 +214,15 @@ export default function ScanPage() {
           <Card>
             <CardContent className="pt-6">
               <BarcodeScanner onScan={handleScan} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
+              <div className="min-w-0">
+                <p className="font-medium">No barcode label on this vessel?</p>
+                <p className="text-sm text-muted-foreground">We will give it your lab&apos;s next number. You can print a label for it later.</p>
+              </div>
+              <Button variant="outline" className="min-h-11" disabled={numbering} onClick={handleNumberForMe}>{numbering ? "Getting a number…" : "Number it for me"}</Button>
             </CardContent>
           </Card>
           {recentScans.length > 0 && (

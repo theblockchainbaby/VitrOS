@@ -18,6 +18,7 @@ const IMPORT_HELP_HREF = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("
 
 interface Logged {
   cultivarName: string;
+  cultivarId: string;
   barcodes: string[];
 }
 
@@ -72,7 +73,7 @@ export default function OnboardingPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Your vessels could not be saved. Try again."); return; }
-      setLogged({ cultivarName: data.cultivar.name, barcodes: data.barcodes });
+      setLogged({ cultivarName: data.cultivar.name, cultivarId: data.cultivar.id, barcodes: data.barcodes });
     } catch {
       setError("Could not confirm this save. Check your vessel list before trying again.");
     } finally {
@@ -97,7 +98,7 @@ export default function OnboardingPage() {
             </p>
             <div className="flex flex-wrap gap-2">
               <Button asChild className="flex-1"><Link href="/vessels">See my vessels</Link></Button>
-              <Button asChild variant="outline" className="flex-1"><Link href="/labels">Print labels</Link></Button>
+              <Button asChild variant="outline" className="flex-1"><Link href={`/labels?cultivarId=${encodeURIComponent(logged.cultivarId)}`}>Print labels</Link></Button>
             </div>
           </CardContent>
         </Card>
