@@ -2,7 +2,7 @@ import { prisma } from "./prisma";
 import { PLAN_CONFIG, PlanName } from "./stripe";
 import { ApiError } from "./api-helpers";
 
-export async function checkVesselLimit(organizationId: string) {
+export async function checkVesselLimit(organizationId: string, adding = 1) {
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: { plan: true, planStatus: true, vesselLimitOverride: true },
@@ -31,6 +31,14 @@ export async function checkVesselLimit(organizationId: string) {
   if (activeVesselCount >= effectiveLimit) {
     throw new ApiError(
       `You've reached the vessel limit of ${effectiveLimit.toLocaleString()} active vessels. Contact support to increase your limit.`,
+      403
+    );
+  }
+
+  const remaining = effectiveLimit - activeVesselCount;
+  if (adding > remaining) {
+    throw new ApiError(
+      `Your plan has room for ${remaining.toLocaleString()} more vessel${remaining === 1 ? "" : "s"} (limit ${effectiveLimit.toLocaleString()}). Enter ${remaining.toLocaleString()} or fewer, or contact support to increase your limit.`,
       403
     );
   }

@@ -85,6 +85,22 @@ export default function Dashboard() {
         }
       />
 
+      {/* A lab with no vessels sees one clear next step instead of empty charts */}
+      {stats.totalVessels === 0 && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl">Log your first vessels</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="max-w-2xl text-sm text-muted-foreground">Your lab is empty, so there is nothing to show yet. Tell us one plant you have in culture and how many vessels. It takes about a minute and you do not need barcode labels.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="lg"><Link href="/onboarding">Log my first vessels</Link></Button>
+              <Button asChild size="lg" variant="outline"><Link href="/import">Import a spreadsheet</Link></Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Subculture reminders */}
       {stats.subcultureDue && (stats.subcultureDue.overdue > 0 || stats.subcultureDue.today > 0) && (
         <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
