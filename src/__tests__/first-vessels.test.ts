@@ -75,7 +75,7 @@ describe("POST /api/onboarding/first-vessels", () => {
   });
 
   it("refuses a count larger than the plan's remaining room", async () => {
-    (prisma as unknown as { vessel: { count: unknown } }).vessel.count = vi.fn().mockResolvedValue(45);
+    (prisma as unknown as { vessel: { count: unknown } }).vessel.count = vi.fn().mockResolvedValue(995);
     const { POST } = await import("@/app/api/onboarding/first-vessels/route");
     const res = await POST(makeRequest({ cultivarName: "Banana", count: 10 }));
     expect(res.status).toBe(403);

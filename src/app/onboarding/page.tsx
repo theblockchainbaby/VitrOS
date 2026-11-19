@@ -32,8 +32,8 @@ export default function OnboardingPage() {
   const [error, setError] = useState("");
   const [logged, setLogged] = useState<Logged | null>(null);
   // How many vessels this lab can add now: the plan's remaining room, capped
-  // by the typo guard. Starts at the free plan's limit until the plan loads.
-  const [maxCount, setMaxCount] = useState(50);
+  // by the typo guard. The server enforces the real limit either way.
+  const [maxCount, setMaxCount] = useState(MAX_STARTER_VESSELS);
 
   // Setup is the welcome. Without this the feature-tour modal opens on top of
   // the vessel list or dashboard the moment the user leaves this page.
