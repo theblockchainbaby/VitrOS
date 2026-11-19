@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DeviceSetup } from "@/components/device-setup";
+import { WELCOME_KEY } from "@/components/welcome-modal";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,12 @@ export default function OnboardingPage() {
   // How many vessels this lab can add now: the plan's remaining room, capped
   // by the typo guard. Starts at the free plan's limit until the plan loads.
   const [maxCount, setMaxCount] = useState(50);
+
+  // Setup is the welcome. Without this the feature-tour modal opens on top of
+  // the vessel list or dashboard the moment the user leaves this page.
+  useEffect(() => {
+    try { localStorage.setItem(WELCOME_KEY, "1"); } catch { /* private browsing */ }
+  }, []);
 
   useEffect(() => {
     fetch("/api/billing/status")
