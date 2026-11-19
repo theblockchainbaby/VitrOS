@@ -9,7 +9,7 @@ import {
   Leaf, TrendingUp, Package, ArrowRight,
 } from "lucide-react";
 
-const WELCOME_KEY = "vitros_welcome_dismissed";
+export const WELCOME_KEY = "vitros_welcome_dismissed";
 
 const steps = [
   {

@@ -28,7 +28,7 @@ export const PLAN_CONFIG = {
     name: "Free",
     priceId: null as string | null,
     priceIdAnnual: null as string | null,
-    maxVessels: 50,
+    maxVessels: 1000,
     maxTeamMembers: 2,
     price: 0,
     priceAnnual: 0,

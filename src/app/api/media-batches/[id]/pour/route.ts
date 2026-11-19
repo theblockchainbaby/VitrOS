@@ -30,14 +30,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     for (const barcode of body.barcodes) {
       try {
         // Check if vessel already exists
-        let vessel = await prisma.vessel.findUnique({ where: { barcode } });
+        let vessel = await prisma.vessel.findFirst({ where: { barcode, organizationId: user.organizationId } });
 
         if (vessel) {
-          // Verify it belongs to same org
-          if (vessel.organizationId !== user.organizationId) {
-            results.push({ barcode, status: "error: belongs to different organization" });
-            continue;
-          }
           // Update existing vessel with batch info
           vessel = await prisma.vessel.update({
             where: { id: vessel.id },

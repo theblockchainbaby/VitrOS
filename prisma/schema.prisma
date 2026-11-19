@@ -248,7 +248,7 @@ model MediaBatch {
 
 model Vessel {
   id                 String       @id @default(cuid())
-  barcode            String       @unique
+  barcode            String
   cultivarId         String?
   mediaRecipeId      String?
   locationId         String?
@@ -299,6 +299,7 @@ model Vessel {
   @@index([organizationId, healthStatus])
   @@index([organizationId, nextSubcultureDate])
   @@index([healthStatus, contaminationType])
+  @@unique([organizationId, barcode])
   @@index([barcode])
   @@index([locationId])
   @@index([nextSubcultureDate])

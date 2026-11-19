@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/page-header";
 import type { Cultivar } from "@/lib/types";
 import { toast } from "sonner";
+import { fetchNextBarcodes } from "@/lib/barcode-client";
+import { MAX_STARTER_VESSELS } from "@/lib/starter-barcodes";
 import { BatchResults, type BatchResult, type BatchFailure } from "@/components/batch-results";
 
 interface MediaRecipe {
@@ -25,6 +27,8 @@ export default function BatchCreatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<BatchResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [numberCount, setNumberCount] = useState("10");
+  const [numbering, setNumbering] = useState(false);
 
   // Shared fields for all vessels
   const [cultivarId, setCultivarId] = useState("");
@@ -74,6 +78,25 @@ export default function BatchCreatePage() {
       inputRef.current?.focus();
     }
   }, [barcodes, scanning, submitting]);
+
+  const handleNumberForMe = async () => {
+    const count = parseInt(numberCount, 10);
+    if (numbering) return;
+    if (!Number.isInteger(count) || count < 1 || count > MAX_STARTER_VESSELS) {
+      toast.error(`Enter a number from 1 to ${MAX_STARTER_VESSELS}`);
+      return;
+    }
+    setNumbering(true);
+    try {
+      const generated = await fetchNextBarcodes(count, barcodes);
+      setBarcodes((prev) => [...prev, ...generated.filter((code) => !prev.includes(code))]);
+      toast.success(`Added ${generated[0]}${generated.length > 1 ? ` to ${generated[generated.length - 1]}` : ""}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not number these vessels. Try again.");
+    } finally {
+      setNumbering(false);
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") addBarcode(barcodeInput);
@@ -165,6 +188,13 @@ export default function BatchCreatePage() {
             <Button className="min-h-12" onClick={() => addBarcode(barcodeInput)} disabled={scanning || !barcodeInput}>
               {scanning ? "..." : "Add"}
             </Button>
+          </div>
+          <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-muted/30 p-3">
+            <div>
+              <Label htmlFor="batch-number-count" className="text-xs">No labels yet? Number this many vessels</Label>
+              <Input id="batch-number-count" type="number" inputMode="numeric" min={1} max={MAX_STARTER_VESSELS} value={numberCount} onChange={(e) => setNumberCount(e.target.value)} className="mt-1 w-28" />
+            </div>
+            <Button variant="outline" className="min-h-10" disabled={numbering} onClick={handleNumberForMe}>{numbering ? "Numbering…" : "Number them for me"}</Button>
           </div>
 
           {barcodes.length > 0 && (

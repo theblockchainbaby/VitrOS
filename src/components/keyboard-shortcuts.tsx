@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SCAN_MAX_KEY_GAP_MS } from "@/lib/use-hardware-scanner";
 
 const SHORTCUTS = [
   { keys: ["s"], label: "Open Scanner", path: "/scan" },
@@ -23,7 +24,19 @@ export function KeyboardShortcuts() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
+    // A hardware barcode scanner types its code as a burst of keys. Without a
+    // focused field, each letter in "RS-00012" used to fire a shortcut and
+    // bounce the user between pages. A shortcut now waits a moment and only
+    // runs if no other key follows, so a burst is left for the scanner listener.
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    let lastKeyAt = 0;
     const handler = (e: KeyboardEvent) => {
+      const now = performance.now();
+      const inBurst = now - lastKeyAt < SCAN_MAX_KEY_GAP_MS;
+      lastKeyAt = now;
+      if (pending) { clearTimeout(pending); pending = null; }
+      if (inBurst) return;
+
       // Don't trigger if typing in an input/textarea/select
       const target = e.target as HTMLElement;
       if (
@@ -51,12 +64,13 @@ export function KeyboardShortcuts() {
       const shortcut = SHORTCUTS.find((s) => s.keys.includes(key) && s.path);
       if (shortcut && shortcut.path) {
         e.preventDefault();
-        router.push(shortcut.path);
+        const path = shortcut.path;
+        pending = setTimeout(() => { pending = null; router.push(path); }, SCAN_MAX_KEY_GAP_MS + 30);
       }
     };
 
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    return () => { window.removeEventListener("keydown", handler); if (pending) clearTimeout(pending); };
   }, [router]);
 
   return (

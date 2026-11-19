@@ -14,6 +14,7 @@ import { StatusBadge, StageBadge } from "@/components/status-badge";
 import { BarcodeScanner } from "@/components/barcode-scanner";
 import type { Vessel } from "@/lib/types";
 import { toast } from "sonner";
+import { fetchNextBarcodes } from "@/lib/barcode-client";
 
 interface NewVessel {
   barcode: string;
@@ -56,6 +57,22 @@ export default function MultiplyPage({ params }: { params: Promise<{ id: string 
 
   const removeVessel = (index: number) => {
     setNewVessels(newVessels.filter((_, i) => i !== index));
+  };
+
+  // Child vessels with no printed label get the lab's next numbers.
+  const [numbering, setNumbering] = useState(false);
+  const numberBlanks = async () => {
+    const blanks = newVessels.filter((v) => !v.barcode).length;
+    if (numbering || blanks === 0) return;
+    setNumbering(true);
+    try {
+      const generated = await fetchNextBarcodes(blanks, newVessels.map((v) => v.barcode).filter(Boolean));
+      setNewVessels((current) => current.map((v) => (v.barcode ? v : { ...v, barcode: generated.shift() || "" })));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not number these vessels. Try again.");
+    } finally {
+      setNumbering(false);
+    }
   };
 
   const handleBarcodeScan = (barcode: string, index: number) => {
@@ -143,9 +160,16 @@ export default function MultiplyPage({ params }: { params: Promise<{ id: string 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-semibold">New Child Vessels ({newVessels.length})</h2>
-          <Button onClick={addVessel} variant="outline" size="sm">
-            + Add Vessel
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {newVessels.some((v) => !v.barcode) && (
+              <Button onClick={numberBlanks} variant="outline" size="sm" disabled={numbering}>
+                {numbering ? "Numbering…" : "No labels? Number the blanks for me"}
+              </Button>
+            )}
+            <Button onClick={addVessel} variant="outline" size="sm">
+              + Add Vessel
+            </Button>
+          </div>
         </div>
 
         {newVessels.length === 0 && (

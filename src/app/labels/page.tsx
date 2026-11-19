@@ -10,13 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { StageBadge } from "@/components/status-badge";
-import { generateBarcodeSVG, generateQRCodeDataURL, printLabels, generateVesselZPL, printZPLViaBrowserPrint, getZebraPrinters } from "@/lib/label-generator";
+import { generateBarcodeSVG, generateQRCodeDataURL, printLabels, generateVesselZPL, printZPLViaBrowserPrint, getZebraPrinters, downloadZPL, getLabelStock, loadSavedLabelStockId, saveLabelStockId, LABEL_STOCKS, DEFAULT_LABEL_STOCK_ID, type ZebraPrinter } from "@/lib/label-generator";
 import type { Vessel } from "@/lib/types";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
 type LabelFormat = "barcode" | "qr" | "both";
-type LabelSize = "small" | "medium" | "large";
 type PrintMode = "browser" | "zebra";
 
 // Label values are operator-supplied (barcodes, cultivar names) and get
@@ -35,10 +34,13 @@ export default function LabelsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [barcodeInput, setBarcodeInput] = useState("");
   const [labelFormat, setLabelFormat] = useState<LabelFormat>("barcode");
-  const [labelSize, setLabelSize] = useState<LabelSize>("medium");
+  const [stockId, setStockId] = useState(DEFAULT_LABEL_STOCK_ID);
+  const stock = getLabelStock(stockId);
+  const chooseStock = (id: string) => { setStockId(id); saveLabelStockId(id); };
+  const [zebraPrinters, setZebraPrinters] = useState<ZebraPrinter[]>([]);
+  const [zebraPrinterUid, setZebraPrinterUid] = useState("");
   const [printMode, setPrintMode] = useState<PrintMode>("browser");
   const [zebraAvailable, setZebraAvailable] = useState<boolean | null>(null);
-  const [zebraPrinterName, setZebraPrinterName] = useState<string>("");
   const [printing, setPrinting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -84,14 +86,20 @@ export default function LabelsPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch("/api/vessels?limit=20");
+      // Arriving from setup or a cultivar: /labels?cultivarId=... loads that
+      // cultivar's vessels and selects them, ready to print.
+      const cultivarId = new URLSearchParams(window.location.search).get("cultivarId");
+      const query = cultivarId ? `limit=200&cultivarId=${encodeURIComponent(cultivarId)}` : "limit=100";
+      const res = await fetch(`/api/vessels?${query}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
+      const loaded: Vessel[] = data.vessels || [];
       setVessels((previous) => {
         const merged = new Map(previous.map((v) => [v.id, v]));
-        (data.vessels || []).forEach((v: Vessel) => merged.set(v.id, v));
+        loaded.forEach((v) => merged.set(v.id, v));
         return [...merged.values()];
       });
+      if (cultivarId) setSelected((prev) => new Set([...prev, ...loaded.map((v) => v.id)]));
     } catch {
       setLoadError("Recent vessels could not be loaded. You can retry or add a vessel by barcode.");
     } finally {
@@ -102,13 +110,33 @@ export default function LabelsPage() {
   const checkZebra = async () => {
     const printers = await getZebraPrinters();
     setZebraAvailable(printers.length > 0);
-    setZebraPrinterName(printers[0]?.name || "");
+    setZebraPrinters(printers);
+    setZebraPrinterUid((current) => (printers.some((p) => p.uid === current) ? current : printers[0]?.uid || ""));
   };
 
   useEffect(() => {
+    setStockId(loadSavedLabelStockId());
     loadRecentVessels();
     checkZebra();
   }, []);
+
+  // The direct Zebra layout needs a label at least 2 in wide.
+  const zplStock = stock.zpl ? stock : getLabelStock(DEFAULT_LABEL_STOCK_ID);
+  const zebraPrinter = zebraPrinters.find((p) => p.uid === zebraPrinterUid);
+  const selectedZPL = () =>
+    vessels.filter((v) => selected.has(v.id)).map((v) => generateVesselZPL({
+      barcode: v.barcode,
+      cultivar: v.cultivar?.name,
+      stage: v.stage,
+      subcultureNumber: v.subcultureNumber,
+      plantedAt: v.plantedAt || v.createdAt,
+    }, zplStock));
+  const handleDownloadZPL = () => {
+    const labels = selectedZPL();
+    if (labels.length === 0) { toast.error("Select at least one vessel"); return; }
+    downloadZPL(labels.join("\n"));
+    setPrintStatus(`Saved ${labels.length} labels as a ZPL file. Send it to your printer with its own utility.`);
+  };
 
   const previewVessel = vessels.find((v) => selected.has(v.id));
   useEffect(() => {
@@ -148,11 +176,8 @@ export default function LabelsPage() {
     setSelected(new Set());
   };
 
-  const sizeStyles: Record<LabelSize, { width: string; fontSize: string }> = {
-    small: { width: "180px", fontSize: "8px" },
-    medium: { width: "250px", fontSize: "10px" },
-    large: { width: "350px", fontSize: "12px" },
-  };
+  // On-screen preview at 96 px per inch, the same proportions as the label.
+  const previewStyle = { width: `${stock.widthIn * 96}px`, minHeight: `${stock.heightIn * 96}px`, fontSize: stock.heightIn <= 1 ? "8.5px" : stock.heightIn >= 2 ? "14px" : "10.5px" };
 
   const handleZebraPrint = async () => {
     const selectedVessels = vessels.filter((v) => selected.has(v.id));
@@ -172,8 +197,8 @@ export default function LabelsPage() {
           stage: v.stage,
           subcultureNumber: v.subcultureNumber,
           plantedAt: v.plantedAt || v.createdAt,
-        });
-        const result = await printZPLViaBrowserPrint(zpl);
+        }, zplStock);
+        const result = await printZPLViaBrowserPrint(zpl, zebraPrinter);
         if (!result.success) {
           setPrintStatus(`${sent} of ${selectedVessels.length} labels sent. ${result.error || "Sending failed"}. Check the printer before retrying.`);
           toast.error(result.error || "Print failed");
@@ -209,8 +234,6 @@ export default function LabelsPage() {
     setPrinting(true);
     setPrintStatus(null);
     try {
-    const style = sizeStyles[labelSize];
-
     // Pre-generate QR images so QR labels print real, scannable codes
     const qrByVesselId = new Map<string, string>();
     if (labelFormat === "qr" || labelFormat === "both") {
@@ -236,22 +259,24 @@ export default function LabelsPage() {
         const qr = qrByVesselId.get(v.id);
         if (qr) {
           const safeBarcode = escapeHtml(v.barcode);
-          barcodeHTML += `<div class="label-barcode"><img src="${escapeHtml(qr)}" alt="QR ${safeBarcode}" style="width: 96px; height: 96px;" /><div style="font-family: monospace; font-size: 10px;">${safeBarcode}</div></div>`;
+          barcodeHTML += `<div class="label-barcode"><img src="${escapeHtml(qr)}" alt="QR ${safeBarcode}" /></div><div class="label-code">${safeBarcode}</div>`;
         }
       }
 
+      const stageAndDate = [v.stage ? escapeHtml(v.stage.toUpperCase()) : "", format(new Date(v.createdAt), "MM/dd/yyyy")].filter(Boolean).join(" · ");
       return `
-        <div class="label" style="width: ${style.width}; font-size: ${style.fontSize};">
+        <div class="label">
           ${barcodeHTML}
           ${v.cultivar?.name ? `<div class="label-cultivar">${escapeHtml(v.cultivar.name)}</div>` : ""}
-          ${v.stage ? `<div class="label-stage">${escapeHtml(v.stage.toUpperCase())}</div>` : ""}
-          <div class="label-date">${format(new Date(v.createdAt), "MM/dd/yyyy")}</div>
+          <div class="label-stage">${stageAndDate}</div>
         </div>
       `;
     }).join("");
 
-    if (printLabels(labelsHTML, printWindow)) {
-      setPrintStatus(`Print window opened for ${selectedVessels.length} labels. Choose your printer and paper size there, then check the printed output.`);
+    if (printLabels(labelsHTML, printWindow, stock)) {
+      setPrintStatus(stock.kind === "roll"
+        ? `Print window opened for ${selectedVessels.length} labels, one per ${stock.widthIn} x ${stock.heightIn} in page. Pick your label printer, set scale to 100% and margins to none, then check the first label.`
+        : `Print window opened for ${selectedVessels.length} labels on plain paper. Choose your printer there, then check the printed output.`);
       toast.success("Print window ready");
     } else {
       toast.error("Could not open the print window");
@@ -353,14 +378,14 @@ export default function LabelsPage() {
                 onClick={() => setPrintMode("browser")}
                 className={`px-3 py-1 rounded-md transition-colors ${printMode === "browser" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
               >
-                Browser Print
+                Any printer
               </button>
               <button
                 aria-pressed={printMode === "zebra"}
                 onClick={() => setPrintMode("zebra")}
                 className={`px-3 py-1 rounded-md transition-colors ${printMode === "zebra" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
               >
-                Zebra ZD421
+                Zebra direct
               </button>
             </div>
           </CardTitle>
@@ -371,18 +396,17 @@ export default function LabelsPage() {
               <p className="text-sm font-medium break-all">Preview · {previewVessel.barcode}</p>
               {previewError && <p role="alert" className="text-sm text-destructive">{previewError}</p>}
               <div className="max-w-full overflow-auto">
-                <div className="rounded border bg-white text-black p-3 text-center space-y-1" style={{ width: sizeStyles[labelSize].width, fontSize: sizeStyles[labelSize].fontSize }}>
+                <div className="flex flex-col justify-center overflow-hidden rounded border bg-white px-2 py-1 text-center leading-tight text-black" style={previewStyle}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- Generated SVG must preserve barcode bars and quiet zones without image optimization. */}
-                  {previewBarcode && <img src={previewBarcode} alt={`Barcode ${previewVessel.barcode}`} className="max-w-full mx-auto" />}
+                  {previewBarcode && <img src={previewBarcode} alt={`Barcode ${previewVessel.barcode}`} className="mx-auto w-full" style={{ height: `${stock.heightIn * 96 * 0.5}px` }} />}
                   {/* eslint-disable-next-line @next/next/no-img-element -- Generated QR data URL is a local print preview, not a network image. */}
-                  {previewQr && <img src={previewQr} alt={`QR code ${previewVessel.barcode}`} className="size-24 mx-auto" />}
-                  {labelFormat === "qr" && <p className="font-mono break-all">{previewVessel.barcode}</p>}
-                  <p className="font-semibold">{previewVessel.cultivar?.name}</p>
-                  <p>{previewVessel.stage?.toUpperCase()}</p>
-                  <p>{format(new Date(previewVessel.createdAt), "MM/dd/yyyy")}</p>
+                  {previewQr && <img src={previewQr} alt={`QR code ${previewVessel.barcode}`} className="mx-auto" style={{ height: `${Math.min(stock.heightIn * 0.55, stock.widthIn * 0.5) * 96}px` }} />}
+                  {labelFormat !== "barcode" && <p className="font-mono break-all">{previewVessel.barcode}</p>}
+                  <p className="truncate font-semibold">{previewVessel.cultivar?.name}</p>
+                  <p>{[previewVessel.stage?.toUpperCase(), format(new Date(previewVessel.createdAt), "MM/dd/yyyy")].filter(Boolean).join(" · ")}</p>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">Preview of the first selected vessel. Confirm dimensions and scale in your browser print dialog; print one label and scan it before a full run.</p>
+              <p className="text-xs text-muted-foreground">{stock.kind === "roll" ? `Shown at actual proportions for a ${stock.widthIn} x ${stock.heightIn} in label. Each label prints on its own page at that size. In the print dialog pick your label printer, scale 100%, margins none.` : "Labels are laid out on plain paper to cut out or stick on."} Print one label and scan it before a full run.</p>
             </div>
           )}
           {printMode === "browser" ? (
@@ -399,13 +423,11 @@ export default function LabelsPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="labels-field-2">Size</Label>
-                <Select value={labelSize} onValueChange={(v) => setLabelSize(v as LabelSize)}>
+                <Label htmlFor="labels-field-2">Label stock</Label>
+                <Select value={stockId} onValueChange={chooseStock}>
                   <SelectTrigger id="labels-field-2" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="small">Small (1&quot; x 0.5&quot;)</SelectItem>
-                    <SelectItem value="medium">Medium (2&quot; x 1&quot;)</SelectItem>
-                    <SelectItem value="large">Large (3&quot; x 1.5&quot;)</SelectItem>
+                    {LABEL_STOCKS.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -424,29 +446,55 @@ export default function LabelsPage() {
               }`}>
                 <div className={`size-2 rounded-full ${zebraAvailable === true ? "bg-primary" : zebraAvailable === false ? "bg-amber-600" : "bg-muted-foreground"}`} />
                 {zebraAvailable === true ? (
-                  <span>Device detected — {zebraPrinterName || "Zebra Browser Print"}</span>
+                  <span>Connected: {zebraPrinter?.name || "Zebra printer"}{zebraPrinters.length > 1 ? ` (${zebraPrinters.length} printers found)` : ""}</span>
                 ) : zebraAvailable === false ? (
                   <span>
-                    Zebra Browser Print not detected.{" "}
+                    No Zebra printer found. Install and open{" "}
                     <a href="https://www.zebra.com/us/en/software/zebra-utilities/browser-print.html" target="_blank" rel="noopener noreferrer" className="underline">
-                      Download here
+                      Zebra Browser Print
                     </a>
+                    {" "}on this computer, plug in the printer, then press Refresh. Other brands: use Any printer.
                   </span>
                 ) : (
                   <span>Checking for Zebra Browser Print...</span>
                 )}
                 <button onClick={checkZebra} className="min-h-11 ml-auto text-xs underline">Refresh</button>
               </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
+                <div>
+                  <Label htmlFor="labels-zebra-stock">Label stock</Label>
+                  <Select value={zplStock.id} onValueChange={chooseStock}>
+                    <SelectTrigger id="labels-zebra-stock" className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LABEL_STOCKS.filter((s) => s.zpl).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {zebraPrinters.length > 1 && (
+                  <div>
+                    <Label htmlFor="labels-zebra-printer">Printer</Label>
+                    <Select value={zebraPrinterUid} onValueChange={setZebraPrinterUid}>
+                      <SelectTrigger id="labels-zebra-printer" className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {zebraPrinters.map((p) => <SelectItem key={p.uid} value={p.uid}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
-                ZPL labels are formatted for 2.25&quot; x 1.25&quot; thermal labels (Zebra ZD421). Includes barcode, cultivar, stage, and subculture number.
+                Sends labels straight to a Zebra printer (ZD, GK, GX and ZT series at 203 dpi) with no print dialog. Each label has the barcode, cultivar, stage and subculture number.
               </p>
-              <Button
-                onClick={handleZebraPrint}
-                disabled={selected.size === 0 || printing || zebraAvailable !== true}
-                className="min-h-11 w-full"
-              >
-                {printing ? "Sending to printer..." : `Print ${selected.size} Label${selected.size !== 1 ? "s" : ""} via Zebra`}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={handleZebraPrint}
+                  disabled={selected.size === 0 || printing || zebraAvailable !== true}
+                  className="min-h-11 min-w-0 flex-1"
+                >
+                  {printing ? "Sending to printer..." : `Print ${selected.size} Label${selected.size !== 1 ? "s" : ""} via Zebra`}
+                </Button>
+                <Button variant="outline" className="min-h-11" disabled={selected.size === 0} onClick={handleDownloadZPL}>Download ZPL file</Button>
+              </div>
             </div>
           )}
         </CardContent>
