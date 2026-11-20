@@ -329,6 +329,7 @@ function BillingContent() {
           <div className="inline-flex items-center rounded-lg border p-1 text-sm">
             <button
               type="button"
+              aria-pressed={!annual}
               onClick={() => setAnnual(false)}
               className={`px-3 py-1 rounded-md transition-colors ${
                 !annual ? "bg-primary text-primary-foreground" : "text-muted-foreground"
@@ -338,6 +339,7 @@ function BillingContent() {
             </button>
             <button
               type="button"
+              aria-pressed={annual}
               onClick={() => setAnnual(true)}
               className={`px-3 py-1 rounded-md transition-colors ${
                 annual ? "bg-primary text-primary-foreground" : "text-muted-foreground"

@@ -12,6 +12,6 @@ export function AuthShell({ children, title, description }: { children: React.Re
       </div>
       <p className="mt-6 text-center text-xs text-muted-foreground">Need a hand? <a className="underline underline-offset-4" href="mailto:support@vitroslabs.com">Contact support</a></p>
     </div>
-    <div className="mx-auto flex w-full max-w-md justify-between gap-4 text-xs text-muted-foreground"><Link href="/">Back to VitrOS</Link><span>Tissue culture, connected.</span></div>
+    <div className="mx-auto flex w-full max-w-md justify-between gap-4 text-xs text-muted-foreground"><Link href="/" className="hover:underline">Back to VitrOS</Link><span>Tissue culture, connected.</span></div>
   </main>;
 }
