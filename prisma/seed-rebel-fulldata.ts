@@ -27,11 +27,11 @@ async function main() {
 
   const techUsers = await Promise.all([
     prisma.user.upsert({
-      where: { email: "sarah@rebel.vitros.app" },
+      where: { email: "sarah@rebel.demo.vitroslabs.com" },
       update: {},
       create: {
         name: "Sarah Chen",
-        email: "sarah@rebel.vitros.app",
+        email: "sarah@rebel.demo.vitroslabs.com",
         passwordHash: hash,
         pin: "2222",
         role: "lead_tech",
@@ -40,11 +40,11 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { email: "marcus@rebel.vitros.app" },
+      where: { email: "marcus@rebel.demo.vitroslabs.com" },
       update: {},
       create: {
         name: "Marcus Rivera",
-        email: "marcus@rebel.vitros.app",
+        email: "marcus@rebel.demo.vitroslabs.com",
         passwordHash: hash,
         pin: "3333",
         role: "tech",
@@ -53,11 +53,11 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { email: "jaylen@rebel.vitros.app" },
+      where: { email: "jaylen@rebel.demo.vitroslabs.com" },
       update: {},
       create: {
         name: "Jaylen Brooks",
-        email: "jaylen@rebel.vitros.app",
+        email: "jaylen@rebel.demo.vitroslabs.com",
         passwordHash: hash,
         pin: "4444",
         role: "tech",
@@ -66,11 +66,11 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { email: "emma@rebel.vitros.app" },
+      where: { email: "emma@rebel.demo.vitroslabs.com" },
       update: {},
       create: {
         name: "Emma Whitfield",
-        email: "emma@rebel.vitros.app",
+        email: "emma@rebel.demo.vitroslabs.com",
         passwordHash: hash,
         pin: "5555",
         role: "tech",
@@ -79,11 +79,11 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { email: "kevin@rebel.vitros.app" },
+      where: { email: "kevin@rebel.demo.vitroslabs.com" },
       update: {},
       create: {
         name: "Kevin Patel",
-        email: "kevin@rebel.vitros.app",
+        email: "kevin@rebel.demo.vitroslabs.com",
         passwordHash: hash,
         pin: "6666",
         role: "tech",

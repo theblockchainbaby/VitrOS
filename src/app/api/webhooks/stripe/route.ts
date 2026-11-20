@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, planFromPriceId } from "@/lib/stripe";
+import { stripe, planFromPriceId, isLiveSubscriptionStatus } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import Stripe from "stripe";
@@ -8,6 +8,17 @@ export const dynamic = "force-dynamic";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SubData = Stripe.Subscription & Record<string, any>;
+
+// True when this subscription is the one on the lab's row, or the lab has
+// none recorded yet (the checkout webhook may arrive after the update one).
+async function isCurrentSubscription(organizationId: string, subscriptionId: string): Promise<boolean> {
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { stripeSubscriptionId: true },
+  });
+  if (!org) return false;
+  return !org.stripeSubscriptionId || org.stripeSubscriptionId === subscriptionId;
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -42,6 +53,27 @@ export async function POST(req: NextRequest) {
         const priceId = sub.items.data[0]?.price.id;
         const plan = planFromPriceId(priceId);
 
+        // Two checkouts finished for one lab (two tabs, or a double click
+        // before the first webhook landed). Keep the subscription the lab
+        // already has and cancel this one so it cannot bill again.
+        const current = await prisma.organization.findUnique({
+          where: { id: organizationId },
+          select: { stripeSubscriptionId: true, name: true },
+        });
+        if (current?.stripeSubscriptionId && current.stripeSubscriptionId !== sub.id) {
+          const kept = await stripe.subscriptions.retrieve(current.stripeSubscriptionId).catch(() => null);
+          if (kept && isLiveSubscriptionStatus(kept.status)) {
+            await stripe.subscriptions.cancel(sub.id);
+            console.error(`[Stripe Webhook] Duplicate subscription ${sub.id} canceled for organization ${organizationId}; kept ${kept.id}. Refund its first invoice in Stripe.`);
+            await sendEmail({
+              to: "support@vitroslabs.com",
+              subject: "[VitrOS] Duplicate subscription canceled, refund needed",
+              html: `<p>${current.name} completed a second checkout. Subscription <code>${sub.id}</code> was canceled automatically and <code>${kept.id}</code> was kept.</p><p>Refund the first invoice of the canceled subscription in Stripe.</p>`,
+            });
+            break;
+          }
+        }
+
         await prisma.organization.update({
           where: { id: organizationId },
           data: {
@@ -64,6 +96,10 @@ export async function POST(req: NextRequest) {
         const updatedSub = event.data.object as SubData;
         const orgId = updatedSub.metadata?.organizationId;
         if (!orgId) break;
+
+        // Only the lab's current subscription may change its plan. An update
+        // for any other subscription (a canceled duplicate) is ignored.
+        if (!(await isCurrentSubscription(orgId, updatedSub.id))) break;
 
         const updatedPriceId = updatedSub.items.data[0]?.price.id;
         const updatedPlan = planFromPriceId(updatedPriceId);
@@ -89,6 +125,8 @@ export async function POST(req: NextRequest) {
         const deletedSub = event.data.object as Stripe.Subscription;
         const organizationId = deletedSub.metadata?.organizationId;
         if (!organizationId) break;
+        // Deleting a duplicate must not cancel the lab's real subscription.
+        if (!(await isCurrentSubscription(organizationId, deletedSub.id))) break;
 
         await prisma.organization.update({
           where: { id: organizationId },

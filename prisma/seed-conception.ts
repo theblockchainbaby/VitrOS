@@ -59,7 +59,7 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       name: "Jesse Davis",
-      email: "demo@conception.vitros.app",
+      email: "demo@conception.demo.vitroslabs.com",
       passwordHash,
       role: "admin",
       pin: "0000",
@@ -70,7 +70,7 @@ async function main() {
   const tech1 = await prisma.user.create({
     data: {
       name: "Maria Santos",
-      email: "tech1@conception.vitros.app",
+      email: "tech1@conception.demo.vitroslabs.com",
       passwordHash,
       role: "lead_tech",
       pin: "1111",
@@ -81,7 +81,7 @@ async function main() {
   const tech2 = await prisma.user.create({
     data: {
       name: "Alex Kim",
-      email: "tech2@conception.vitros.app",
+      email: "tech2@conception.demo.vitroslabs.com",
       passwordHash,
       role: "tech",
       pin: "2222",
@@ -92,7 +92,7 @@ async function main() {
   const tech3 = await prisma.user.create({
     data: {
       name: "Jordan Rivera",
-      email: "tech3@conception.vitros.app",
+      email: "tech3@conception.demo.vitroslabs.com",
       passwordHash,
       role: "tech",
       pin: "3333",
@@ -349,7 +349,7 @@ async function main() {
 
   console.log("\n═══════════════════════════════════════════════");
   console.log("  Conception Nurseries demo seeded!");
-  console.log("  Login: demo@conception.vitros.app");
+  console.log("  Login: demo@conception.demo.vitroslabs.com");
   console.log("  Password: demo1234 | PIN: 0000");
   console.log("═══════════════════════════════════════════════");
 }

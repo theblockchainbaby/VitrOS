@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, handleApiError } from "@/lib/api-helpers";
 import bcrypt from "bcryptjs";
+import { assertNotDemoAccount } from "@/lib/demo-account";
 import { z } from "zod";
 
 const changePasswordSchema = z.object({
@@ -12,6 +13,7 @@ const changePasswordSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
+    assertNotDemoAccount(user, "change its password");
     const body = changePasswordSchema.parse(await req.json());
 
     const dbUser = await prisma.user.findUnique({

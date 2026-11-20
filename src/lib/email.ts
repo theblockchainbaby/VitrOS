@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { isDemoAddress } from "./demo-account";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -19,10 +20,15 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     return null;
   }
 
+  // Demo and seed users have addresses that are not real mailboxes, and some
+  // older ones sit on domains VitrOS does not own. Never mail them.
+  const recipients = (Array.isArray(to) ? to : [to]).filter((address) => !isDemoAddress(address));
+  if (recipients.length === 0) return null;
+
   try {
     const result = await resend.emails.send({
       from: FROM_EMAIL,
-      to: Array.isArray(to) ? to : [to],
+      to: recipients,
       replyTo: REPLY_TO_EMAIL,
       subject,
       html,

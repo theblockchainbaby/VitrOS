@@ -115,13 +115,13 @@ async function main() {
   const demoHash = await bcrypt.hash("demo1234", 10);
 
   const techData = [
-    { name: "Maria Rodriguez", email: "maria@oglesby.vitros.app", role: "tech" },
-    { name: "James Thompson", email: "james@oglesby.vitros.app", role: "tech" },
-    { name: "Sara Kim", email: "sara@oglesby.vitros.app", role: "tech" },
-    { name: "David Lopez", email: "david@oglesby.vitros.app", role: "tech" },
-    { name: "Priya Patel", email: "priya@oglesby.vitros.app", role: "tech" },
-    { name: "Tyler Jackson", email: "tyler@oglesby.vitros.app", role: "tech" },
-    { name: "Lisa Chen", email: "lisa@oglesby.vitros.app", role: "supervisor" },
+    { name: "Maria Rodriguez", email: "maria@oglesby.demo.vitroslabs.com", role: "tech" },
+    { name: "James Thompson", email: "james@oglesby.demo.vitroslabs.com", role: "tech" },
+    { name: "Sara Kim", email: "sara@oglesby.demo.vitroslabs.com", role: "tech" },
+    { name: "David Lopez", email: "david@oglesby.demo.vitroslabs.com", role: "tech" },
+    { name: "Priya Patel", email: "priya@oglesby.demo.vitroslabs.com", role: "tech" },
+    { name: "Tyler Jackson", email: "tyler@oglesby.demo.vitroslabs.com", role: "tech" },
+    { name: "Lisa Chen", email: "lisa@oglesby.demo.vitroslabs.com", role: "supervisor" },
   ];
 
   const techUsers: { id: string; name: string }[] = [];
@@ -300,7 +300,7 @@ async function main() {
   console.log(`  Historical Shifts: ${totalShifts}`);
   console.log(`  Production Activities: ${totalActivities}`);
   console.log(`  Shift Notes: ${noteData.length}`);
-  console.log(`  Login: demo@oglesby.vitros.app / demo1234`);
+  console.log(`  Login: demo@oglesby.demo.vitroslabs.com / demo1234`);
   console.log(`═══════════════════════════════════════\n`);
 }
 

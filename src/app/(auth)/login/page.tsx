@@ -21,7 +21,7 @@ function LoginForm() {
   const demo = searchParams.get("demo") === "true";
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("email");
-  const [email, setEmail] = useState(demo ? "demo@vitros.app" : "");
+  const [email, setEmail] = useState(demo ? "demo@vitroslabs.com" : "");
   const [password, setPassword] = useState(demo ? "demo1234" : "");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");

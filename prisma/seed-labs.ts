@@ -34,7 +34,7 @@ const LABS: LabConfig[] = [
   {
     name: "Oglesby Plants International",
     slug: "oglesby",
-    email: "demo@oglesby.vitros.app",
+    email: "demo@oglesby.demo.vitroslabs.com",
     contactName: "Gary Hennen",
     address: "15855 NW CR 12, Altha, FL 32421",
     siteName: "Altha Main Facility",
@@ -81,7 +81,7 @@ const LABS: LabConfig[] = [
   {
     name: "AgriStarts",
     slug: "agristarts",
-    email: "demo@agristarts.vitros.app",
+    email: "demo@agristarts.demo.vitroslabs.com",
     contactName: "Randy Strode",
     address: "1728 Kelly Park Rd, Apopka, FL 32712",
     siteName: "Apopka Propagation Center",
@@ -127,7 +127,7 @@ const LABS: LabConfig[] = [
   {
     name: "AG3 Inc",
     slug: "ag3",
-    email: "demo@ag3.vitros.app",
+    email: "demo@ag3.demo.vitroslabs.com",
     contactName: "Belynda Rinck",
     address: "9410 CR 44A, Eustis, FL 32736",
     siteName: "Eustis Main Lab",
@@ -172,7 +172,7 @@ const LABS: LabConfig[] = [
   {
     name: "Terra Nova Nurseries",
     slug: "terranova",
-    email: "demo@terranova.vitros.app",
+    email: "demo@terranova.demo.vitroslabs.com",
     contactName: "Dan Heims",
     address: "10051 S Macksburg Rd, Canby, OR 97013",
     siteName: "Canby Breeding Facility",
@@ -217,7 +217,7 @@ const LABS: LabConfig[] = [
   {
     name: "Conception Nurseries",
     slug: "conception",
-    email: "demo@conception.vitros.app",
+    email: "demo@conception.demo.vitroslabs.com",
     contactName: "Kevin Brooks",
     address: "2424 Glendale Ln, Sacramento, CA 95825",
     siteName: "Sacramento Propagation Facility",
@@ -264,7 +264,7 @@ const LABS: LabConfig[] = [
   {
     name: "Rancho Tissue Technologies",
     slug: "rancho",
-    email: "demo@rancho.vitros.app",
+    email: "demo@rancho.demo.vitroslabs.com",
     contactName: "Heather May",
     address: "18539 Aliso Canyon Rd, Rancho Santa Fe, CA 92067",
     siteName: "Rancho Santa Fe Lab",
@@ -308,7 +308,7 @@ const LABS: LabConfig[] = [
   {
     name: "Subculture Laboratories",
     slug: "subculture",
-    email: "demo@subculture.vitros.app",
+    email: "demo@subculture.demo.vitroslabs.com",
     contactName: "Sylvan Christenson",
     address: "700 South Emerald Lane, Carbondale, IL 62901",
     siteName: "Carbondale Lab",
@@ -354,7 +354,7 @@ const LABS: LabConfig[] = [
   {
     name: "Phinest Tissue Culture",
     slug: "phinest",
-    email: "demo@phinest.vitros.app",
+    email: "demo@phinest.demo.vitroslabs.com",
     contactName: "Hector Monge",
     address: "3835 N. Freeway Blvd. Suite #210, Sacramento, CA 95834",
     siteName: "Sacramento TC Facility",
@@ -444,7 +444,7 @@ async function seedLab(lab: LabConfig) {
   const tech1 = await prisma.user.create({
     data: {
       name: "Lab Technician",
-      email: `tech1@${lab.slug}.vitros.app`,
+      email: `tech1@${lab.slug}.demo.vitroslabs.com`,
       passwordHash,
       role: "lead_tech",
       pin: "1111",
@@ -455,7 +455,7 @@ async function seedLab(lab: LabConfig) {
   const tech2 = await prisma.user.create({
     data: {
       name: "Junior Technician",
-      email: `tech2@${lab.slug}.vitros.app`,
+      email: `tech2@${lab.slug}.demo.vitroslabs.com`,
       passwordHash,
       role: "tech",
       pin: "2222",

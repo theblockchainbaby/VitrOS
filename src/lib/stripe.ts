@@ -81,6 +81,13 @@ export function resolvePriceId(plan: PlanName, interval: BillingInterval): strin
   return interval === "annual" ? config.priceIdAnnual : config.priceId;
 }
 
+// Statuses in which a Stripe subscription still exists and can bill. A lab
+// with one of these must not be given another subscription.
+const LIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due", "unpaid", "paused"]);
+export function isLiveSubscriptionStatus(status: string): boolean {
+  return LIVE_SUBSCRIPTION_STATUSES.has(status);
+}
+
 export function planFromPriceId(priceId: string): PlanName {
   for (const [plan, config] of Object.entries(PLAN_CONFIG)) {
     if (config.priceId === priceId || config.priceIdAnnual === priceId) return plan as PlanName;

@@ -111,6 +111,7 @@ const STATUS_STYLES: Record<
 > = {
   active: { variant: "default", label: "Active" },
   trialing: { variant: "secondary", label: "Trial" },
+  trial_expired: { variant: "destructive", label: "Trial ended" },
   past_due: { variant: "destructive", label: "Past Due" },
   canceled: { variant: "outline", label: "Canceled" },
 };
@@ -276,10 +277,15 @@ function BillingContent() {
                 ${status.price.toLocaleString()}/mo
               </p>
             )}
-            {trialDaysLeft !== null && trialDaysLeft > 0 && (
+            {status.planStatus === "trialing" && trialDaysLeft !== null && trialDaysLeft > 0 && (
               <p className="text-sm text-amber-600 mt-1">
                 {trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} left in
                 trial
+              </p>
+            )}
+            {status.planStatus === "trial_expired" && status.trialEndsAt && (
+              <p role="alert" className="mt-1 max-w-xl text-sm text-destructive">
+                Your free trial ended on {new Date(status.trialEndsAt).toLocaleDateString()}. Your records are safe and you can still view and update them. Choose a plan below to add vessels and teammates again.
               </p>
             )}
             {status.currentPeriodEnd && status.planStatus === "active" && (

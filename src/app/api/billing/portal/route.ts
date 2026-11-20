@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, requireRole, handleApiError, ApiError } from "@/lib/api-helpers";
 import { stripe } from "@/lib/stripe";
+import { assertNotDemoAccount } from "@/lib/demo-account";
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
     requireRole(user, "admin", "manager");
+    assertNotDemoAccount(user, "open billing");
 
     const org = await prisma.organization.findUnique({
       where: { id: user.organizationId },
