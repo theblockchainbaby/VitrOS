@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 import { rateLimit } from "./rate-limit";
+import { currentLoginEmail } from "./demo-account";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Note: PrismaAdapter removed — not needed with JWT + Credentials.
@@ -28,8 +29,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { allowed } = rateLimit(`login:${credentials.email}`, { max: 10, windowMs: 60_000 });
         if (!allowed) return null;
 
+        // Demo logins handed out before the move off vitros.app still work.
         const user = await prisma.user.findFirst({
-          where: { email: { equals: credentials.email as string, mode: "insensitive" } },
+          where: { email: { equals: currentLoginEmail(credentials.email as string), mode: "insensitive" } },
           include: { organization: true },
         });
 

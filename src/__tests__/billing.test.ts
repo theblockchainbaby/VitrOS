@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isTrialExpired, checkVesselLimit, getOrgPlanStatus } from "@/lib/plan-limits";
 import { bannerFor } from "@/components/upgrade-banner";
-import { isDemoAddress } from "@/lib/demo-account";
+import { isDemoAddress, currentLoginEmail } from "@/lib/demo-account";
 import { isLiveSubscriptionStatus } from "@/lib/stripe";
 
 const DAY = 86_400_000;
@@ -75,6 +75,13 @@ describe("demo addresses", () => {
     for (const email of ["demo@vitroslabs.com", "Sarah@demo.vitroslabs.com", "tech1@oglesby.demo.vitroslabs.com", "demo@vitros.app", "tech1@rebel.vitros.app", "x@vitros.io"]) {
       expect(isDemoAddress(email)).toBe(true);
     }
+  });
+  it("maps demo logins sent out on the old domain to their current address", () => {
+    expect(currentLoginEmail("demo@vitros.app")).toBe("demo@vitroslabs.com");
+    expect(currentLoginEmail("Demo@Oglesby.vitros.app")).toBe("Demo@Oglesby.demo.vitroslabs.com");
+    expect(currentLoginEmail(" demo@conception.vitros.app ")).toBe("demo@conception.demo.vitroslabs.com");
+    expect(currentLoginEmail("h.moritz@perfectplants.co.za")).toBe("h.moritz@perfectplants.co.za");
+    expect(currentLoginEmail("someone@notvitros.app")).toBe("someone@notvitros.app");
   });
   it("leaves real customers and staff alone", () => {
     for (const email of ["york@vitroslabs.com", "support@vitroslabs.com", "h.moritz@perfectplants.co.za", "someone@notvitros.app.example.com"]) {
