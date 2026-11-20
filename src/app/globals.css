@@ -197,3 +197,60 @@
   font-size: 12px;
 }
 .workspace-content .recharts-tooltip-label { color: var(--popover-foreground); }
+
+/* Touch screens (phones and tablets). Controls sized for a mouse are too small
+   to hit reliably with a thumb, so every control gets at least a 44px target.
+   Form text is 16px because iOS Safari zooms the whole page on focus below that. */
+@media (pointer: coarse) {
+  :is(button, a)[data-variant][data-size]:not([data-size*="xs"]),
+  [data-slot="select-trigger"],
+  [data-slot="input"],
+  [data-slot="tabs-trigger"],
+  [data-slot="select-item"],
+  [data-slot="dropdown-menu-item"],
+  [data-slot="sidebar-menu-button"],
+  [data-slot="sidebar-menu-sub-button"],
+  [data-slot="sidebar-group-label"] button,
+  .workspace-content button[aria-pressed],
+  .workspace-content button[role="tab"] {
+    min-height: 2.75rem;
+  }
+  :is(button, a)[data-variant][data-size^="icon"]:not([data-size*="xs"]),
+  [data-slot="sidebar-trigger"] {
+    min-width: 2.75rem;
+  }
+  [data-slot="sidebar-menu-button"],
+  [data-slot="sidebar-menu-sub-button"] {
+    font-size: 1rem;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea,
+  [data-slot="select-trigger"] {
+    font-size: 1rem;
+  }
+  input[type="checkbox"],
+  input[type="radio"],
+  [data-slot="checkbox"] {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  /* A checkbox stays visually small but answers taps around it. */
+  [data-slot="checkbox"] { position: relative; }
+  [data-slot="checkbox"]::after { content: ""; position: absolute; inset: -0.625rem; }
+  .workspace-content button[aria-label^="Copy"] { padding-block: 0.75rem; }
+  /* The corner X on dialogs and side sheets is a 16px icon. */
+  [data-slot="dialog-close"].absolute::after,
+  [data-slot="sheet-close"].absolute::after { content: ""; position: absolute; inset: -0.875rem; }
+  /* Inline text links: vertical padding on an inline element widens the tap
+     area without moving the line it sits in. */
+  a.underline,
+  a[class*="hover:underline"],
+  a[class*="underline-offset"],
+  a.inline-flex:not([data-variant]),
+  a[class*="rounded-md"]:not([data-variant]),
+  header a:not([data-variant]),
+  footer a:not([data-variant]) {
+    padding-block: 0.75rem;
+  }
+}
