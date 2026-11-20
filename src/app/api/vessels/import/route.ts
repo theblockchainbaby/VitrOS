@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, handleApiError, ApiError } from "@/lib/api-helpers";
+import { checkVesselLimit } from "@/lib/plan-limits";
 import { logActivity } from "@/lib/activity-logger";
 import { VESSEL_STATUSES, HEALTH_STATUSES, STAGES } from "@/lib/constants";
 
@@ -71,6 +72,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for duplicate barcodes within the CSV
+    await checkVesselLimit(user.organizationId, rows.length);
+
     const barcodes = rows.map((r) => r.barcode);
     const uniqueBarcodes = new Set(barcodes);
     if (uniqueBarcodes.size !== barcodes.length) {

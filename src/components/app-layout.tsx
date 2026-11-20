@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { GlobalScanner } from "@/components/global-scanner";
+import { UpgradeBanner } from "@/components/upgrade-banner";
 import { WelcomeModal } from "@/components/welcome-modal";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -30,6 +31,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {status === "authenticated" && pathname !== "/onboarding" && <WelcomeModal />}
           {status === "authenticated" && <KeyboardShortcuts />}
           {status === "authenticated" && <GlobalScanner />}
+          {status === "authenticated" && <UpgradeBanner />}
           {children}
         </div>
       </SidebarInset>

@@ -21,7 +21,7 @@ const PLANS = [
     description: "For single-bench labs, hobbyists, and small startups",
     features: [
       "1 user, 1 location",
-      "Up to 500 active vessels",
+      "Up to 5,000 active vessels",
       "Barcode scanning",
       "Vessel tracking & stage pipeline",
       "Basic contamination tracking",
@@ -38,7 +38,7 @@ const PLANS = [
     popular: true,
     features: [
       "Up to 5 users, 3 locations",
-      "Up to 5,000 active vessels",
+      "Up to 20,000 active vessels",
       "Everything in Solo, plus:",
       "Advanced analytics & dashboards",
       "Contamination trend analysis",
@@ -57,7 +57,7 @@ const PLANS = [
     description: "For serious operations needing full lab management",
     features: [
       "Unlimited users & locations",
-      "Unlimited active vessels",
+      "Up to 50,000 active vessels",
       "Everything in Growth, plus:",
       "Tech performance & incentive tracking",
       "Station & hood contamination correlation",
@@ -106,7 +106,7 @@ const FAQ = [
   },
   {
     q: "What if I need more vessels but not Enterprise features?",
-    a: "Pro gives you unlimited vessels and users. If you need custom integrations or dedicated support on top of that, Enterprise is the way to go.",
+    a: "Growth covers up to 20,000 active vessels and Pro covers up to 50,000 with unlimited users. Beyond that, or if you need custom integrations or dedicated support, Enterprise has no vessel limit.",
   },
 ];
 

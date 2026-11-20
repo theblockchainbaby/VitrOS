@@ -59,7 +59,7 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       name: "Hector Monge",
-      email: "demo@phinest.vitros.app",
+      email: "demo@phinest.demo.vitroslabs.com",
       passwordHash,
       role: "admin",
       pin: "0000",
@@ -70,7 +70,7 @@ async function main() {
   const tech1 = await prisma.user.create({
     data: {
       name: "Lab Technician",
-      email: "tech1@phinest.vitros.app",
+      email: "tech1@phinest.demo.vitroslabs.com",
       passwordHash,
       role: "lead_tech",
       pin: "1111",
@@ -81,7 +81,7 @@ async function main() {
   const tech2 = await prisma.user.create({
     data: {
       name: "Junior Technician",
-      email: "tech2@phinest.vitros.app",
+      email: "tech2@phinest.demo.vitroslabs.com",
       passwordHash,
       role: "tech",
       pin: "2222",
@@ -91,7 +91,7 @@ async function main() {
 
   const users = [admin, tech1, tech2];
   console.log(`✓ Org "Phinest Tissue Culture" with 3 users`);
-  console.log(`  Login: demo@phinest.vitros.app / demo1234 (PIN: 0000)`);
+  console.log(`  Login: demo@phinest.demo.vitroslabs.com / demo1234 (PIN: 0000)`);
 
   // Create site + locations
   const site = await prisma.site.create({
@@ -548,7 +548,7 @@ async function main() {
 
   console.log("\n═══════════════════════════════════════════════");
   console.log("✅ Phinest Tissue Culture demo ready!");
-  console.log("  Login: demo@phinest.vitros.app / demo1234 (PIN: 0000)");
+  console.log("  Login: demo@phinest.demo.vitroslabs.com / demo1234 (PIN: 0000)");
   console.log("═══════════════════════════════════════════════\n");
 }
 

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth, handleApiError, ApiError } from "@/lib/api-helpers";
-import { stripe, PlanName, resolvePriceId } from "@/lib/stripe";
+import { requireAuth, requireRole, handleApiError, ApiError } from "@/lib/api-helpers";
+import { stripe, PlanName, resolvePriceId, isLiveSubscriptionStatus } from "@/lib/stripe";
+import { assertNotDemoAccount } from "@/lib/demo-account";
 import { z } from "zod";
 
 const checkoutSchema = z.object({
@@ -13,6 +14,8 @@ const checkoutSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
+    requireRole(user, "admin", "manager");
+    assertNotDemoAccount(user, "start a subscription");
     const body = await req.json();
     const { plan, interval, coupon } = checkoutSchema.parse(body);
 
@@ -29,7 +32,48 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const origin =
+      req.headers.get("origin") ||
+      process.env.AUTH_URL ||
+      "https://vitroslabs.com";
+
     let customerId = org.stripeCustomerId;
+
+    // A lab that already subscribes must never get a second subscription.
+    // Ask Stripe, not our own row: the row lags behind a checkout whose
+    // webhook has not landed yet.
+    if (customerId) {
+      const existing = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 20 });
+      const live = existing.data.find((sub) => isLiveSubscriptionStatus(sub.status));
+      if (live) {
+        if (live.status === "past_due" || live.status === "unpaid") {
+          throw new ApiError("Your last payment failed. Update your payment method under Manage Billing before changing plans.", 409);
+        }
+        const item = live.items.data[0];
+        if (!item) throw new ApiError("Your subscription could not be read. Contact support.", 409);
+        if (item.price.id === priceId) {
+          throw new ApiError("You are already on this plan.", 409);
+        }
+        // Switch the plan on the subscription they have. Stripe prorates the
+        // difference on the next invoice.
+        const updated = await stripe.subscriptions.update(live.id, {
+          items: [{ id: item.id, price: priceId }],
+          proration_behavior: "create_prorations",
+          metadata: { ...live.metadata, organizationId: org.id },
+        });
+        await prisma.organization.update({
+          where: { id: org.id },
+          data: {
+            stripeSubscriptionId: updated.id,
+            stripePriceId: priceId,
+            plan,
+            planStatus: updated.status === "trialing" ? "trialing" : "active",
+          },
+        });
+        return NextResponse.json({ updated: true, url: `${origin}/admin/billing?success=true` });
+      }
+    }
+
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email,
@@ -45,11 +89,6 @@ export async function POST(req: NextRequest) {
         data: { stripeCustomerId: customerId },
       });
     }
-
-    const origin =
-      req.headers.get("origin") ||
-      process.env.AUTH_URL ||
-      "https://vitroslabs.com";
 
     const sessionParams: Record<string, unknown> = {
       customer: customerId,

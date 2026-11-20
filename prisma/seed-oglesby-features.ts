@@ -292,7 +292,7 @@ async function main() {
   console.log(`  Vessels Assigned to Lines: ${assignedVessels}`);
   console.log(`  Sales Orders: ${soCount}`);
   console.log(`  Lineage Links: ${linkedVessels}`);
-  console.log(`  Login: demo@oglesby.vitros.app / demo1234`);
+  console.log(`  Login: demo@oglesby.demo.vitroslabs.com / demo1234`);
   console.log(`═══════════════════════════════════════\n`);
 }
 

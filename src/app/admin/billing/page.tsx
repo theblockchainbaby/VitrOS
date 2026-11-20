@@ -25,10 +25,10 @@ const PLANS = [
     name: "Solo",
     price: 49,
     priceAnnual: 490,
-    maxVessels: "500",
+    maxVessels: "5,000",
     maxMembers: "1",
     features: [
-      "Up to 500 active vessels",
+      "Up to 5,000 active vessels",
       "1 user, 1 location",
       "Barcode scanning",
       "Batch operations",
@@ -41,11 +41,11 @@ const PLANS = [
     name: "Growth",
     price: 99,
     priceAnnual: 990,
-    maxVessels: "5,000",
+    maxVessels: "20,000",
     maxMembers: "5",
     popular: true,
     features: [
-      "Up to 5,000 active vessels",
+      "Up to 20,000 active vessels",
       "Up to 5 users, 3 locations",
       "Full analytics & forecasting",
       "Contamination tracking",
@@ -59,10 +59,10 @@ const PLANS = [
     name: "Pro",
     price: 199,
     priceAnnual: 1990,
-    maxVessels: "Unlimited",
+    maxVessels: "50,000",
     maxMembers: "Unlimited",
     features: [
-      "Unlimited vessels",
+      "Up to 50,000 active vessels",
       "Unlimited users & locations",
       "AI Lab Assistant",
       "Team performance tracking",
@@ -111,6 +111,7 @@ const STATUS_STYLES: Record<
 > = {
   active: { variant: "default", label: "Active" },
   trialing: { variant: "secondary", label: "Trial" },
+  trial_expired: { variant: "destructive", label: "Trial ended" },
   past_due: { variant: "destructive", label: "Past Due" },
   canceled: { variant: "outline", label: "Canceled" },
 };
@@ -276,10 +277,15 @@ function BillingContent() {
                 ${status.price.toLocaleString()}/mo
               </p>
             )}
-            {trialDaysLeft !== null && trialDaysLeft > 0 && (
+            {status.planStatus === "trialing" && trialDaysLeft !== null && trialDaysLeft > 0 && (
               <p className="text-sm text-amber-600 mt-1">
                 {trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} left in
                 trial
+              </p>
+            )}
+            {status.planStatus === "trial_expired" && status.trialEndsAt && (
+              <p role="alert" className="mt-1 max-w-xl text-sm text-destructive">
+                Your free trial ended on {new Date(status.trialEndsAt).toLocaleDateString()}. Your records are safe and you can still view and update them. Choose a plan below to add vessels and teammates again.
               </p>
             )}
             {status.currentPeriodEnd && status.planStatus === "active" && (

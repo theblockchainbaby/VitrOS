@@ -101,7 +101,7 @@ export default function DemoPage() {
             <div className="space-y-4">
               <div>
                 <p className="text-sm font-medium mb-1">Demo Login</p>
-                <code className="text-sm bg-muted px-3 py-2 rounded block">demo@vitros.app</code>
+                <code className="text-sm bg-muted px-3 py-2 rounded block">demo@vitroslabs.com</code>
               </div>
               <div>
                 <p className="text-sm font-medium mb-1">Password</p>

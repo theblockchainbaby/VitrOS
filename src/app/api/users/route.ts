@@ -4,6 +4,7 @@ import { requireAuth, requireRole, handleApiError, parseBody } from "@/lib/api-h
 import { createUserSchema } from "@/lib/validations";
 import { checkTeamMemberLimit } from "@/lib/plan-limits";
 import bcrypt from "bcryptjs";
+import { assertNotDemoAccount } from "@/lib/demo-account";
 
 export async function GET() {
   try {
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
   try {
     const currentUser = await requireAuth();
     requireRole(currentUser, "admin", "manager");
+    assertNotDemoAccount(currentUser, "add team members");
     await checkTeamMemberLimit(currentUser.organizationId);
     const body = await parseBody(req, createUserSchema);
 

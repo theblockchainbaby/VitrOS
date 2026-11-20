@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, handleApiError } from "@/lib/api-helpers";
+import { requireAuth, handleApiError, ApiError } from "@/lib/api-helpers";
+import { checkVesselLimit } from "@/lib/plan-limits";
 import { logActivity } from "@/lib/activity-logger";
 import { z } from "zod";
 
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           results.push({ barcode, status: "updated", vesselId: vessel.id });
         } else {
           // Create new vessel with batch info
+          await checkVesselLimit(user.organizationId);
           vessel = await prisma.vessel.create({
             data: {
               barcode,
@@ -72,8 +74,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
           results.push({ barcode, status: "created", vesselId: vessel.id });
         }
-      } catch {
-        results.push({ barcode, status: "error" });
+      } catch (error) {
+        // Plan and trial limits carry a message the operator needs to see.
+        results.push({ barcode, status: error instanceof ApiError ? `error: ${error.message}` : "error" });
       }
     }
 

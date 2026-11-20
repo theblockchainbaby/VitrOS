@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, handleApiError, parseBody } from "@/lib/api-helpers";
+import { checkVesselLimit } from "@/lib/plan-limits";
 import { multiplyVesselSchema } from "@/lib/validations";
 import { dispatchWebhook } from "@/lib/webhooks";
 
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const user = await requireAuth();
     const { id } = await params;
     const body = await parseBody(req, multiplyVesselSchema);
+    await checkVesselLimit(user.organizationId, body.children.length);
 
     const parent = await prisma.vessel.findFirst({
       where: { id, organizationId: user.organizationId },

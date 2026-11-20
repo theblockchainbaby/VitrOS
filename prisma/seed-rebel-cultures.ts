@@ -59,7 +59,7 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       name: "Della Fetzer",
-      email: "demo@rebel.vitros.app",
+      email: "demo@rebel.demo.vitroslabs.com",
       passwordHash,
       role: "admin",
       pin: "0000",
@@ -70,7 +70,7 @@ async function main() {
   const tech1 = await prisma.user.create({
     data: {
       name: "Lab Technician",
-      email: "tech1@rebel.vitros.app",
+      email: "tech1@rebel.demo.vitroslabs.com",
       passwordHash,
       role: "lead_tech",
       pin: "1111",
@@ -80,7 +80,7 @@ async function main() {
 
   const users = [admin, tech1];
   console.log(`✓ Org "Rebel Cultures" with 2 users`);
-  console.log(`  Login: demo@rebel.vitros.app / demo1234 (PIN: 0000)`);
+  console.log(`  Login: demo@rebel.demo.vitroslabs.com / demo1234 (PIN: 0000)`);
 
   // Create site + locations
   const site = await prisma.site.create({
@@ -362,7 +362,7 @@ async function main() {
 
   console.log("\n═══════════════════════════════════════════════");
   console.log("✅ Rebel Cultures demo ready!");
-  console.log("  Login: demo@rebel.vitros.app / demo1234 (PIN: 0000)");
+  console.log("  Login: demo@rebel.demo.vitroslabs.com / demo1234 (PIN: 0000)");
   console.log("  6 Dahlia varieties + 4 Strawberry varieties");
   console.log("  ~220 vessels, 5 clone lines, pathogen history");
   console.log("═══════════════════════════════════════════════\n");

@@ -90,7 +90,7 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       name: "Demo Admin",
-      email: "demo@vitros.app",
+      email: "demo@vitroslabs.com",
       passwordHash,
       role: "admin",
       pin: "0000",
@@ -101,7 +101,7 @@ async function main() {
   const tech1 = await prisma.user.create({
     data: {
       name: "Sarah Chen",
-      email: "sarah@demo.vitros.app",
+      email: "sarah@demo.demo.vitroslabs.com",
       passwordHash,
       role: "lead_tech",
       pin: "1111",
@@ -112,7 +112,7 @@ async function main() {
   const tech2 = await prisma.user.create({
     data: {
       name: "Marcus Rivera",
-      email: "marcus@demo.vitros.app",
+      email: "marcus@demo.demo.vitroslabs.com",
       passwordHash,
       role: "tech",
       pin: "2222",
@@ -122,7 +122,7 @@ async function main() {
 
   const users = [admin, tech1, tech2];
   console.log(`  ✓ Created org "${org.name}" with 3 users`);
-  console.log(`    Login: demo@vitros.app / demo1234`);
+  console.log(`    Login: demo@vitroslabs.com / demo1234`);
 
   // Create site + locations
   const site = await prisma.site.create({
@@ -517,7 +517,7 @@ async function main() {
 
   console.log("");
   console.log("✅ Demo Lab ready!");
-  console.log("   Login: demo@vitros.app / demo1234");
+  console.log("   Login: demo@vitroslabs.com / demo1234");
   console.log("   PIN:   0000");
 }
 
